@@ -69,11 +69,11 @@ const defaultForm = { id: null, model: null, modelVersion: null }
 export default {
   name: 'DeviceInfo',
   // components: { pagination, crudOperation, rrOperation, udOperation },
-  components: { pagination, crudOperation, rrOperation, unOperation },
+  components: { pagination, crudOperation, rrOperation, onOperation },
   mixins: [presenter(), header(), form(defaultForm), crud()],
   cruds() {
     return CRUD({ title: '测试生成', url: 'api/deviceInfo', idField: 'id', sort: 'id,desc', crudMethod: { ...crudDeviceInfo },
-      optshow:{ add: true, edit: true, del: false}})
+      optshow: { add: true, edit: true, del: false }})
   },
   data() {
     return {

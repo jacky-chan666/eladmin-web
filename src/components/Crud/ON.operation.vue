@@ -118,32 +118,44 @@ export default {
 
     cancelOnline() {
       this.onlineFormVisible = false
-      this.$refs.onlineFormRef?.resetFields()
+      // 移除了可选链操作符，改为传统判断方式
+      if (this.$refs.onlineFormRef) {
+        this.$refs.onlineFormRef.resetFields()
+      }
     },
 
     cancelOffline() {
       this.offlineFormVisible = false
-      this.$refs.offlineFormRef?.resetFields()
+      // 移除了可选链操作符，改为传统判断方式
+      if (this.$refs.offlineFormRef) {
+        this.$refs.offlineFormRef.resetFields()
+      }
     },
 
     submitOnline() {
-      this.$refs.onlineFormRef.validate((valid) => {
-        if (valid) {
-          // 处理上线逻辑，可以调用相应的 CRUD 方法
-          this.crud.notify('上线操作已提交，理由: ' + this.onlineForm.reason, CRUD.NOTIFICATION_TYPE.SUCCESS)
-          this.onlineFormVisible = false
-        }
-      })
+      // 使用传统的存在性检查替代可选链操作符
+      if (this.$refs.onlineFormRef) {
+        this.$refs.onlineFormRef.validate((valid) => {
+          if (valid) {
+            // 处理上线逻辑，可以调用相应的 CRUD 方法
+            this.crud.notify('上线操作已提交，理由: ' + this.onlineForm.reason, CRUD.NOTIFICATION_TYPE.SUCCESS)
+            this.onlineFormVisible = false
+          }
+        })
+      }
     },
 
     submitOffline() {
-      this.$refs.offlineFormRef.validate((valid) => {
-        if (valid) {
-          // 处理下线逻辑，可以调用相应的 CRUD 方法
-          this.crud.notify('下线操作已提交，理由: ' + this.offlineForm.reason, CRUD.NOTIFICATION_TYPE.SUCCESS)
-          this.offlineFormVisible = false
-        }
-      })
+      // 使用传统的存在性检查替代可选链操作符
+      if (this.$refs.offlineFormRef) {
+        this.$refs.offlineFormRef.validate((valid) => {
+          if (valid) {
+            // 处理下线逻辑，可以调用相应的 CRUD 方法
+            this.crud.notify('下线操作已提交，理由: ' + this.offlineForm.reason, CRUD.NOTIFICATION_TYPE.SUCCESS)
+            this.offlineFormVisible = false
+          }
+        })
+      }
     }
   }
 }
