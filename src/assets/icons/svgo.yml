@@ -13,8 +13,8 @@ plugins:
   #
   # or:
   # - name:
-  #     param1: 1
-  #     param2: 2
+  #     param1: one
+  #     param2: two
 
 - removeAttrs:
     attrs:

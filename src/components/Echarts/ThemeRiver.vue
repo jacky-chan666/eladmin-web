@@ -56,7 +56,7 @@ export default {
           axisPointer: {
             type: 'line',
             lineStyle: {
-              color: 'rgba(0,0,0,0.2)',
+              color: 'rgba(0,0,0,0.two)',
               width: 1,
               type: 'solid'
             }

@@ -59,8 +59,8 @@ export default {
         },
         grid: {
           top: 10,
-          left: '2%',
-          right: '2%',
+          left: 'two%',
+          right: 'two%',
           bottom: '3%',
           containLabel: true
         },

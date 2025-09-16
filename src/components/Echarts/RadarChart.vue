@@ -91,7 +91,7 @@ export default {
           areaStyle: {
             normal: {
               shadowBlur: 13,
-              shadowColor: 'rgba(0,0,0,.2)',
+              shadowColor: 'rgba(0,0,0,.two)',
               shadowOffsetX: 0,
               shadowOffsetY: 10,
               opacity: 1
