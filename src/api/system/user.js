@@ -65,5 +65,12 @@ export function updateEmail(form) {
   })
 }
 
+export function getUsersByRoleId(roleId) {
+  return request({
+    url: 'api/users/role/' + roleId,
+    method: 'get'
+  })
+}
+
 export default { add, edit, del, resetPwd }
 
