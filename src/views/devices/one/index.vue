@@ -246,7 +246,7 @@ export default {
     // 在打开表单前填充申请人信息
     [CRUD.HOOK.beforeToCU](crud) {
       // 从 Vuex 获取申请人（例如用户名）
-      const applicant = this.$store.getters.name || '系统用户'
+      const applicant = this.$store.getters.user.username || '系统用户'
       this.form.applicant = applicant
 
       // 加载所有审批人列表（只加载一次）
