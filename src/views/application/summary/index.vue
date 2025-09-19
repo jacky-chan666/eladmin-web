@@ -6,9 +6,9 @@
       <div v-if="crud.props.searchToggle">
         <!-- 搜索框保持不变 -->
         <label class="el-form-item-label">申请单UUID</label>
-        <el-input v-model="query.applicantId" clearable placeholder="申请单ID" style="width: 185px;" class="filter-item" @keyup.enter.native="crud.toQuery" />
+        <el-input v-model="query.uuid" clearable placeholder="申请单ID" style="width: 185px;" class="filter-item" @keyup.enter.native="crud.toQuery" />
         <label class="el-form-item-label">申请人姓名</label>
-        <el-input v-model="query.applicantName" clearable placeholder="申请人姓名" style="width: 185px;" class="filter-item" @keyup.enter.native="crud.toQuery" />
+        <el-input v-model="query.applicantUserName" clearable placeholder="申请人姓名" style="width: 185px;" class="filter-item" @keyup.enter.native="crud.toQuery" />
         <label class="el-form-item-label">申请单类型</label>
         <el-input v-model="query.applicationType" clearable placeholder="申请单类型" style="width: 185px;" class="filter-item" @keyup.enter.native="crud.toQuery" />
         <label class="el-form-item-label">申请单数据类型</label>
@@ -29,8 +29,8 @@
       <!-- 表格渲染 -->
       <el-table ref="table" v-loading="crud.loading" :data="crud.data" size="small" style="width: 100%;" @selection-change="crud.selectionChangeHandler">
         <el-table-column type="selection" width="55" />
-        <el-table-column prop="applicantId" label="申请单ID" />
-        <el-table-column prop="applicantName" label="申请人姓名" />
+        <el-table-column prop="uuid" label="申请单ID" />
+        <el-table-column prop="applicantUserName" label="申请人姓名" />
         <el-table-column prop="applicationDate" label="申请日期" />
         <el-table-column prop="applicationType" label="申请单类型" />
         <el-table-column prop="applicationDataType" label="申请单数据类型" />
@@ -90,8 +90,8 @@
           <!-- Tab 1: 单据信息 -->
           <el-tab-pane label="单据信息">
             <el-descriptions :column="1" border size="medium">
-              <el-descriptions-item label="申请单ID">{{ detail.applicantId }}</el-descriptions-item>
-              <el-descriptions-item label="申请人">{{ detail.applicantName }}</el-descriptions-item>
+              <el-descriptions-item label="申请单ID">{{ detail.uuid }}</el-descriptions-item>
+              <el-descriptions-item label="申请人">{{ detail.applicantUserName }}</el-descriptions-item>
               <el-descriptions-item label="表单标题">{{ detail.applicationTitle }}</el-descriptions-item>
               <el-descriptions-item label="申请日期">{{ detail.applicationDate }}</el-descriptions-item>
               <el-descriptions-item label="申请类型">{{ detail.applicationType }}</el-descriptions-item>
@@ -183,8 +183,8 @@ import pagination from '@crud/Pagination'
 
 const defaultForm = {
   id: null,
-  applicantId: null,
-  applicantName: null,
+  uuid: null,
+  applicantUserName: null,
   department: null,
   applicationDate: null,
   applicationDataId: null,
@@ -238,8 +238,8 @@ export default {
         del: ['admin', 'deviceApplicationForm.js:del'],
       },
       rules: {
-        applicantId: [{ required: true, message: '申请单不能为空', trigger: 'blur' }],
-        applicantName: [{ required: true, message: '申请人姓名不能为空', trigger: 'blur' }],
+        uuid: [{ required: true, message: '申请单不能为空', trigger: 'blur' }],
+        applicantUserName: [{ required: true, message: '申请人姓名不能为空', trigger: 'blur' }],
         applicationDate: [{ required: true, message: '申请日期不能为空', trigger: 'blur' }],
         applicationType: [{ required: true, message: '申请单类型', trigger: 'blur' }],
         applicationDataType: [{ required: true, message: '申请单数据类型', trigger: 'blur' }],
@@ -247,8 +247,8 @@ export default {
         status: [{ required: true, message: '申请状态不能为空', trigger: 'blur' }]
       },
       queryTypeOptions: [
-        { key: 'applicantId', display_name: '申请单ID' },
-        { key: 'applicantName', display_name: '申请人姓名' },
+        { key: 'uuid', display_name: '申请单ID' },
+        { key: 'applicantUserName', display_name: '申请人姓名' },
         { key: 'applicationType', display_name: '申请单类型' },
         { key: 'applicationDataType', display_name: '申请单数据类型' }
       ],
@@ -259,7 +259,7 @@ export default {
   methods: {
     isSelf(row) {
       const currentUsername = this.$store.getters.user.username
-      return row.applicantName === currentUsername
+      return row.applicantUserName === currentUsername
     },
 
     // 开关变化处理
@@ -274,7 +274,7 @@ export default {
         this.$delete(this.query, 'applicantName') // 或者 this.query.applicantName = null
       } else {
         // 仅显示当前用户
-        this.query.applicantName = this.currentUser
+        this.query.applicantUserName = this.currentUser
       }
       this.crud.toQuery() // 重新请求数据
     },
@@ -283,7 +283,7 @@ export default {
     [CRUD.HOOK.beforeRefresh]() {
       // 确保每次刷新也遵循当前开关状态
       if (!this.showAll) {
-        this.query.applicantName = this.currentUser
+        this.query.applicantUserName = this.currentUser
       } else {
         this.$delete(this.query, 'applicantName')
       }
@@ -293,8 +293,8 @@ export default {
     // 钩子：页面加载后执行
     [CRUD.HOOK.afterRefresh]() {
       // 第一次加载时，如果没有 applicantName 查询条件，自动设置
-      if (!this.query.applicantName && !this.showAll) {
-        this.query.applicantName = this.currentUser
+      if (!this.query.applicantUserName && !this.showAll) {
+        this.query.applicantUserName = this.currentUser
         this.crud.toQuery()
       }
     },

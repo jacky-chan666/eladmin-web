@@ -24,4 +24,12 @@ export function edit(data) {
   })
 }
 
+export function approve(data) {
+  return request({
+    url: '/api/deviceApplicationForm/approve',
+    method: 'post',
+    data
+  })
+}
+
 export default { add, edit, del }
