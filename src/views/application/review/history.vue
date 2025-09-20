@@ -28,24 +28,23 @@
 
       <!-- 表格渲染 -->
       <el-table ref="table" v-loading="crud.loading" :data="crud.data" size="small" style="width: 100%;" @selection-change="crud.selectionChangeHandler">
-        <el-table-column type="selection" width="55" align="center" />
-        <el-table-column prop="applicationForm.uuid" label="申请单ID" align="center" />
-        <el-table-column prop="applicationForm.applicantUserName" label="申请人姓名" align="center" />
-        <el-table-column prop="applicationForm.applicationDate" label="申请日期" align="center" />
-        <el-table-column prop="applicationForm.applicationType" label="申请单类型" align="center">
+        <el-table-column prop="uuid" label="申请单ID" align="center" />
+        <el-table-column prop="applicantUserName" label="申请人姓名" align="center" />
+        <el-table-column prop="applicationDate" label="申请日期" align="center" />
+        <el-table-column prop="applicationType" label="申请单类型" align="center">
           <template slot-scope="scope">
-            <div style="text-align: center;">{{ getApplicationTypeName(scope.row.applicationForm.applicationType) }}</div>
+            <div style="text-align: center;">{{ getApplicationTypeName(scope.row.applicationType) }}</div>
           </template>
         </el-table-column>
-        <el-table-column prop="applicationForm.applicationDataType" label="申请单数据类型" align="center">
+        <el-table-column prop="applicationDataType" label="申请单数据类型" align="center">
           <template slot-scope="scope">
-            <div style="text-align: center;">{{ getApplicationDataTypeName(scope.row.applicationForm.applicationDataType) }}</div>
+            <div style="text-align: center;">{{ getApplicationDataTypeName(scope.row.applicationDataType) }}</div>
           </template>
         </el-table-column>
-        <el-table-column prop="applicationForm.applicationTitle" label="申请单标题" align="center" />
-        <el-table-column prop="applicationForm.status" label="申请状态" align="center">
+        <el-table-column prop="applicationTitle" label="申请单标题" align="center" />
+        <el-table-column prop="status" label="申请状态" align="center">
           <template slot-scope="scope">
-            <div style="text-align: center;">{{ getStatusName(scope.row.applicationForm.status) }}</div>
+            <div style="text-align: center;">{{ getStatusName(scope.row.status) }}</div>
           </template>
         </el-table-column>
         <!-- 操作列：动态权限控制 -->
@@ -53,7 +52,7 @@
           <template slot-scope="scope">
             <div style="display: flex; justify-content: center; flex-wrap: wrap; gap: 8px;">
               <!-- 查看：所有人都可以看（或者你也可以限制权限）除了草稿 -->
-              <el-button size="mini" type="text" @click="handleView(scope.row.applicationForm)">查看</el-button>
+              <el-button size="mini" type="text" @click="handleView(scope.row)">查看</el-button>
             </div>
           </template>
         </el-table-column>
@@ -173,45 +172,9 @@
 
         <!-- 底部按钮 -->
         <div slot="footer" class="dialog-footer">
-          <el-button type="success" size="small" @click="handleApprove(detail)">通过</el-button>
-          <el-button type="danger" size="small" @click="openRejectDialog(detail)">驳回</el-button>
           <el-button size="small" @click="detailVisible = false">关闭</el-button>
         </div>
-
       </el-dialog>
-
-      <el-dialog
-        :visible.sync="rejectDialogVisible"
-        title="驳回申请"
-        width="400px"
-        top="30vh"
-        center
-        :close-on-click-modal="false"
-        @closed="onRejectDialogClosed"
-      >
-        <el-form size="small">
-          <el-form-item label="驳回理由" required>
-            <el-input
-              v-model="rejectReason"
-              type="textarea"
-              :rows="3"
-              placeholder="请填写驳回原因"
-              maxlength="200"
-              show-word-limit
-            />
-          </el-form-item>
-        </el-form>
-
-        <div slot="footer" class="dialog-footer">
-          <el-button size="small" @click="onRejectCancel">取消</el-button>
-          <el-button size="small" type="primary" :loading="submitLoading" @click="submitReject">
-            确定驳回
-          </el-button>
-        </div>
-      </el-dialog>
-
-
-
       <!-- 分页 -->
       <pagination />
     </div>
@@ -224,7 +187,6 @@ import CRUD, { presenter, header, form, crud } from '@crud/crud'
 import rrOperation from '@crud/RR.operation'
 import crudOperation from '@crud/CRUD.operation'
 import pagination from '@crud/Pagination'
-import {approveApplication} from '@/api/deviceApplicationForm'
 
 const defaultForm = {
 }
@@ -236,7 +198,7 @@ export default {
   cruds() {
     return CRUD({
       title: '申请单接口',
-      url: 'api/deviceApplicationForm/pending-approvals',
+      url: 'api/deviceApplicationForm/approved-applications',
       idField: 'id',
       sort: 'id,desc',
       crudMethod: { ...crudDeviceApplicationForm },
@@ -304,6 +266,12 @@ export default {
     }
   },
   methods: {
+
+    // 开关变化处理
+    onSwitchChange() {
+      this.updateQuery()
+    },
+
     // 处理点击"查看"
     handleView(row) {
       this.detail = { ...row } // 复制当前行数据
@@ -470,74 +438,6 @@ export default {
         case this.APPROVAL_STATUS_REJECTED: return 'danger'
         default: return 'info'
       }
-    },
-    openRejectDialog(row) {
-      this.detail = { ...row }
-      this.rejectDialogVisible = true
-      this.rejectReason = ''
-      this.submitLoading = false
-    },
-    onRejectCancel() {
-      this.rejectDialogVisible = false
-    },
-
-    onRejectDialogClosed() {
-      // dialog 完全关闭后清理数据
-      this.rejectReason = ''
-      this.submitLoading = false
-    },
-    submitReject() {
-      if (!this.rejectReason.trim()) {
-        this.$message.warning('请输入驳回理由')
-        return
-      }
-
-      this.submitLoading = true
-
-      // 调用审批接口（驳回）
-      approveApplication(
-        this.detail.id,
-        this.currentUser,
-        this.APPROVAL_STATUS_REJECTED,
-        this.rejectReason.trim()
-      )
-        .then(() => {
-          this.$message.success('已驳回')
-          this.detailVisible = false //关闭详情弹窗
-          this.rejectDialogVisible = false // 关闭驳回弹窗
-          this.crud.toQuery() // 刷新列表
-        })
-        .catch(err => {
-          this.$message.error('提交失败：' + (err.message || '未知错误'))
-        })
-        .finally(() => {
-          this.submitLoading = false
-        })
-    },
-    handleApprove(row) {
-      this.$confirm('确定要通过该申请吗？', '提示', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }).then(() => {
-        // 调用审批接口（通过）
-        approveApplication(
-          row.id,
-          this.currentUser,
-          this.APPROVAL_STATUS_APPROVED,
-          '同意'
-        )
-          .then(res => {
-            this.$message.success('审批通过')
-            this.detailVisible = false
-            this.crud.toQuery() // 刷新列表
-          })
-          .catch(err => {
-            this.$message.error('操作失败：' + (err.message || '未知错误'))
-          })
-      }).catch(() => {
-        this.$message.info('已取消')
-      })
     },
     // 钩子：在获取数据前执行
     [CRUD.HOOK.beforeRefresh]() {

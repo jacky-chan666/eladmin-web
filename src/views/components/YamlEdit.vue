@@ -182,7 +182,7 @@ export default {
         '        license-url:\n' +
         '\n' +
         '# ===================================================================\n' +
-        '# Application specific properties\n' +
+        '# ApplicationForm specific properties\n' +
         '# Add your own application properties here, see the ApplicationProperties class\n' +
         '# to have type-safe configuration, like in the JHipsterProperties above\n' +
         '#\n' +

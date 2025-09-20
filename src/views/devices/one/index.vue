@@ -26,16 +26,50 @@
       >
         <el-form ref="form" :model="form" :rules="rules" size="small" label-width="100px">
 
+          <!-- 在设备信息卡片之前添加申请信息卡片 -->
+          <el-card shadow="never" style="margin-bottom: 20px;">
+            <div slot="header" style="font-weight: bold; font-size: 16px;">申请信息</div>
+            <el-row :gutter="20">
+              <!-- 审定单编号 -->
+              <el-col :span="12">
+                <el-form-item label="审定单编号">
+                  <el-input v-model="form.uuid" disabled style="width: 100%;" />
+                </el-form-item>
+              </el-col>
+
+              <!-- 申请人 -->
+              <el-col :span="12">
+                <el-form-item label="申请人">
+                  <el-input v-model="form.applicantUserName" disabled style="width: 100%;" />
+                </el-form-item>
+              </el-col>
+
+              <!-- 申请单标题 -->
+              <el-col :span="24">
+                <el-form-item label="申请单标题" prop="applicationTitle">
+                  <el-input v-model="form.applicationTitle" placeholder="请输入申请单标题" style="width: 100%;" />
+                </el-form-item>
+              </el-col>
+
+              <!-- 申请理由 -->
+              <el-col :span="24">
+                <el-form-item label="申请理由" prop="applicationReason">
+                  <el-input
+                    v-model="form.applicationReason"
+                    type="textarea"
+                    :rows="3"
+                    placeholder="请输入申请理由"
+                    style="width: 100%;"
+                  />
+                </el-form-item>
+              </el-col>
+            </el-row>
+          </el-card>
+
           <!-- 设备信息区块 -->
           <el-card shadow="never" style="margin-bottom: 20px;">
             <div slot="header" style="font-weight: bold; font-size: 16px;">设备信息</div>
             <el-row :gutter="20">
-              <!-- 申请单编号 -->
-              <el-col :span="24">
-                <el-form-item label="申请单编号">
-                  <el-input v-model="form.uuid" disabled style="width: 100%;" />
-                </el-form-item>
-              </el-col>
 
               <!-- 设备型号 + 设备版本 -->
               <el-col :span="12">
@@ -140,17 +174,17 @@
 
               <!-- 第一行：研发接口人 + 设备接口人 -->
               <el-col :span="12">
-                <el-form-item label="研发接口人" prop="devInterface">
-                  <el-select v-model="form.devInterface" filterable placeholder="请选择" size="small" style="width: 100%;">
-                    <el-option v-for="user in devInterfaceUsers" :key="user.id" :label="user.username" :value="user.username" />
+                <el-form-item label="研发接口人" prop="devContact">
+                  <el-select v-model="form.devContact" filterable placeholder="请选择" size="small" style="width: 100%;">
+                    <el-option v-for="user in devContactUsers" :key="user.id" :label="user.username" :value="user.username" />
                   </el-select>
                 </el-form-item>
               </el-col>
 
               <el-col :span="12">
-                <el-form-item label="设备接口人" prop="deviceInterface">
-                  <el-select v-model="form.deviceInterface" filterable placeholder="请选择" size="small" style="width: 100%;">
-                    <el-option v-for="user in deviceInterfaceUsers" :key="user.id" :label="user.username" :value="user.username" />
+                <el-form-item label="测试接口人" prop="testContact">
+                  <el-select v-model="form.testContact" filterable placeholder="请选择" size="small" style="width: 100%;">
+                    <el-option v-for="user in testContactUsers" :key="user.id" :label="user.username" :value="user.username" />
                   </el-select>
                 </el-form-item>
               </el-col>
@@ -165,29 +199,24 @@
               </el-col>
 
               <el-col :span="12">
-                <el-form-item label="设备组长" prop="deviceLeader">
-                  <el-select v-model="form.deviceLeader" filterable placeholder="请选择" size="small" style="width: 100%;">
-                    <el-option v-for="user in deviceLeaderUsers" :key="user.id" :label="user.username" :value="user.username" />
+                <el-form-item label="测试组长" prop="testLeader">
+                  <el-select v-model="form.testLeader" filterable placeholder="请选择" size="small" style="width: 100%;">
+                    <el-option v-for="user in testLeaderUsers" :key="user.id" :label="user.username" :value="user.username" />
                   </el-select>
                 </el-form-item>
               </el-col>
 
-              <!-- 申请人放在最后单独一行（可选） -->
-              <el-col :span="24">
-                <el-form-item label="申请人" prop="applicantUserName">
-                  <el-input v-model="form.applicantUserName" disabled size="small" style="width: 100%;" />
-                </el-form-item>
-              </el-col>
 
             </el-row>
           </el-card>
 
         </el-form>
 
+        <!-- 在 dialog 的 footer 中添加提交申请按钮 -->
         <div slot="footer" class="dialog-footer">
           <el-button type="text" @click="crud.cancelCU">取消</el-button>
-          <el-button :loading="saveLoading" type="info" @click="handleSave">保存</el-button>
-          <el-button :loading="crud.status.cu === 2" type="primary" @click="crud.submitCU">确认</el-button>
+          <el-button :loading="saveLoading" type="info" @click="handleSaveDraft">保存</el-button>
+          <el-button :loading="crud.status.cu === 2" type="primary" @click="submitApplication">提交申请</el-button>
         </div>
       </el-dialog>
 
@@ -223,16 +252,21 @@ import rrOperation from '@crud/RR.operation'
 import crudOperation from '@crud/CRUD.operation'
 import onOperation from '@crud/ON.operation'
 import pagination from '@crud/Pagination'
+import { submitApplication, saveDraft } from '@/api/deviceApplicationForm'
 
-// 默认表单值
+// 更新默认表单值
 const defaultForm = {
   id: null,
   uuid: null,
+  applicationTitle: null,
+  applicationReason: null,
+  applicationType: null, // 1:新增, 2:编辑, 3:上线, 4:下线
+  applicationDataType: 1, // 默认为1
   applicantUserName: '',
-  devInterface: null,
-  deviceInterface: null,
+  devContact: null,
+  testContact: null,
   devLeader: null,
-  deviceLeader: null,
+  testLeader: null,
   deviceDetail: {
     model: null,
     modelVersion: null,
@@ -244,6 +278,7 @@ const defaultForm = {
     adoptResp: '{"modelId": "123"}' // 默认示例值
   }
 }
+
 
 
 export default {
@@ -292,26 +327,32 @@ export default {
         'deviceDetail.adoptResp': [
           { required: true, message: '收养报文不能为空', trigger: 'blur' },
           { validator: this.validateAdoptResp, trigger: 'blur' }
-        ]
+        ],
+        applicationTitle: [
+          { required: true, message: '申请单标题不能为空', trigger: 'blur' }
+        ],
+        applicationReason: [
+          { required: true, message: '申请理由不能为空', trigger: 'blur' }
+        ],
         // === 审核信息校验规则 ===
-        // devInterface: [
-        //   { required: true, message: '请选择研发接口人', trigger: 'change' }
-        // ],
-        // deviceInterface: [
-        //   { required: true, message: '请选择设备接口人', trigger: 'change' }
-        // ],
-        // devLeader: [
-        //   { required: true, message: '请选择研发组长', trigger: 'change' }
-        // ],
-        // deviceLeader: [
-        //   { required: true, message: '请选择设备组长', trigger: 'change' }
-        // ]
+        devContact: [
+          { required: true, message: '请选择研发接口人', trigger: 'change' }
+        ],
+        testContact: [
+          { required: true, message: '请选择设备接口人', trigger: 'change' }
+        ],
+        devLeader: [
+          { required: true, message: '请选择研发组长', trigger: 'change' }
+        ],
+        testLeader: [
+          { required: true, message: '请选择设备组长', trigger: 'change' }
+        ]
       },
       // 存储各角色的用户列表
-      devInterfaceUsers: [],
-      deviceInterfaceUsers: [],
+      devContactUsers: [],
+      testContactUsers: [],
       devLeaderUsers: [],
-      deviceLeaderUsers: [],
+      testLeaderUsers: [],
 
       queryTypeOptions: [
         { key: 'model', display_name: '模型类型' },
@@ -331,32 +372,61 @@ export default {
         callback(new Error('收养报文必须是合法的转义JSON字符串'))
       }
     },
-    async handleSave() {
+    // 新增保存草稿方法
+    async handleSaveDraft() {
       this.saveLoading = true
       try {
         // 验证表单
         await this.$refs.form.validate()
 
-        // 根据是新增还是编辑执行不同操作
-        if (this.crud.status.add === 1) {
-          // 新增
-          await crudDeviceInfo.add(this.form)
-          this.$message.success('保存成功')
-          this.crud.cancelCU()
-          this.crud.toQuery()
-        } else if (this.crud.status.edit === 1) {
-          // 编辑
-          await crudDeviceInfo.edit(this.form)
-          this.$message.success('保存成功')
-          this.crud.cancelCU()
-          this.crud.refresh()
+        // 构造提交数据
+        const submitData = {
+          ...this.form,
+          id: null,
+          deviceDetail: JSON.stringify(this.form.deviceDetail),
+          applicationType: this.getApplicationType()
         }
+
+        // 调用保存草稿接口
+        await saveDraft(submitData)
+        this.$message.success('草稿保存成功')
+        this.crud.cancelCU()
+        this.crud.toQuery()
       } catch (error) {
-        console.error('保存失败', error)
-        this.$message.error('保存失败')
+        console.error('保存草稿失败', error)
+        this.$message.error('保存草稿失败')
       } finally {
         this.saveLoading = false
       }
+    },
+    async submitApplication() {
+      try {
+        // 构造提交数据
+        const submitData = {
+          ...this.form,
+          id: null,
+          deviceDetail: JSON.stringify(this.form.deviceDetail),
+          applicationType: this.getApplicationType()
+        }
+
+        await submitApplication(submitData)
+        this.$message.success('申请提交成功')
+        this.crud.cancelCU()
+        this.crud.toQuery()
+      } catch (error) {
+        console.error('提交申请失败', error)
+        this.$message.error('提交申请失败')
+      }
+    },
+
+    getApplicationType() {
+      // 根据操作状态确定申请类型
+      if (this.crud.status.add === 1) {
+        return 1 // 新增
+      } else if (this.crud.status.edit === 1) {
+        return 2 // 编辑
+      }
+      return 1 // 默认新增
     },
     // 在打开表单前填充申请人信息
     [CRUD.HOOK.beforeToCU](crud) {
@@ -365,7 +435,7 @@ export default {
       this.form.applicantUserName = applicantUserName
 
       // 加载所有审批人列表（只加载一次）
-      if (this.devInterfaceUsers.length === 0) {
+      if (this.devContactUsers.length === 0) {
         this.loadApproverUsersByRoles()
       }
       return true
@@ -379,20 +449,20 @@ export default {
         const roles = rolesRes.content || rolesRes
 
         // 找到对应的角色ID
-        const devInterfaceRole = roles.find(role => role.name.includes('研发接口人'))
-        const deviceInterfaceRole = roles.find(role => role.name.includes('设备接口人'))
+        const devContactRole = roles.find(role => role.name.includes('研发接口人'))
+        const testContactRole = roles.find(role => role.name.includes('测试接口人'))
         const devLeaderRole = roles.find(role => role.name.includes('研发组长'))
-        const deviceLeaderRole = roles.find(role => role.name.includes('设备组长'))
+        const testLeaderRole = roles.find(role => role.name.includes('测试组长'))
 
         // 根据角色ID获取对应的用户（如果后端支持按角色查询用户）
-        if (devInterfaceRole) {
-          const users = await getUsersByRoleId(devInterfaceRole.id) // 需要实现这个API调用
-          this.devInterfaceUsers = users.content || users
+        if (devContactRole) {
+          const users = await getUsersByRoleId(devContactRole.id) // 需要实现这个API调用
+          this.devContactUsers = users.content || users
         }
 
-        if (deviceInterfaceRole) {
-          const users = await getUsersByRoleId(deviceInterfaceRole.id)
-          this.deviceInterfaceUsers = users.content || users
+        if (testContactRole) {
+          const users = await getUsersByRoleId(testContactRole.id)
+          this.testContactUsers = users.content || users
         }
 
         if (devLeaderRole) {
@@ -400,9 +470,9 @@ export default {
           this.devLeaderUsers = users.content || users
         }
 
-        if (deviceLeaderRole) {
-          const users = await getUsersByRoleId(deviceLeaderRole.id)
-          this.deviceLeaderUsers = users.content || users
+        if (testLeaderRole) {
+          const users = await getUsersByRoleId(testLeaderRole.id)
+          this.testLeaderUsers = users.content || users
         }
       } catch (error) {
         console.error('获取审批人列表失败:', error)

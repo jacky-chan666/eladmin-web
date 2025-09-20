@@ -153,8 +153,8 @@ export default {
       },
 
       // 审批人列表（从父级或全局获取）
-      devInterfaceUsers: [],
-      deviceInterfaceUsers: [],
+      devContactUsers: [],
+      testContactUsers: [],
       devLeaderUsers: [],
       testLeaderUsers: [],
 
@@ -198,7 +198,7 @@ export default {
       this.formData.testLeader = null
 
       // 加载审批人列表（仅加载一次）
-      if (this.devInterfaceUsers.length === 0) {
+      if (this.devContactUsers.length === 0) {
         this.loadApproverUsers()
       }
 
