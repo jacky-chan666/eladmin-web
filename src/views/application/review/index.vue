@@ -59,126 +59,19 @@
         </el-table-column>
       </el-table>
 
-      <!-- 查看详情的弹窗 -->
-      <el-dialog
+      <!-- 使用公共组件显示详情 -->
+      <ApplicationDetailView
         :visible.sync="detailVisible"
+        :detail-data="detail"
         title="申请单详情"
-        width="800px"
-        top="5vh"
-        :close-on-click-modal="false"
+        @close="detailVisible = false"
       >
-        <el-tabs type="border-card">
-          <!-- Tab 1: 申请信息 -->
-          <el-tab-pane label="单据信息">
-            <el-descriptions :column="1" border size="medium">
-              <el-descriptions-item label="申请单ID">{{ detail.uuid }}</el-descriptions-item>
-              <el-descriptions-item label="申请人">{{ detail.applicantUserName }}</el-descriptions-item>
-              <el-descriptions-item label="表单标题">{{ detail.applicationTitle }}</el-descriptions-item>
-              <el-descriptions-item label="申请日期">{{ detail.createdAt }}</el-descriptions-item>
-              <el-descriptions-item label="申请类型">{{ getApplicationTypeName(detail.applicationType) }}</el-descriptions-item>
-              <el-descriptions-item label="数据类型">{{ getApplicationDataTypeName(detail.applicationDataType) }}</el-descriptions-item>
-              <el-descriptions-item label="申请状态">{{ getStatusName(detail.status) }}</el-descriptions-item>
-              <el-descriptions-item label="申请理由">
-                <div style="white-space: pre-wrap;">{{ detail.applicationReason || '暂无' }}</div>
-              </el-descriptions-item>
-            </el-descriptions>
-          </el-tab-pane>
-
-          <!-- Tab 2: 设备信息 -->
-          <el-tab-pane label="设备信息">
-            <div v-if="loadingDeviceInfo">正在加载设备信息...</div>
-            <el-descriptions v-else :column="1" border size="medium">
-              <el-descriptions-item label="设备型号">{{ parsedDeviceInfo.model || '暂无' }}</el-descriptions-item>
-              <el-descriptions-item label="设备版本">{{ parsedDeviceInfo.modelVersion || '暂无' }}</el-descriptions-item>
-              <el-descriptions-item label="设备类型">{{ getModelTypeName(parsedDeviceInfo.modelType) || '暂无' }}</el-descriptions-item>
-              <el-descriptions-item label="设备种类">{{ getTypeName(parsedDeviceInfo.type) || '暂无' }}</el-descriptions-item>
-              <el-descriptions-item label="硬件版本">{{ parsedDeviceInfo.hwVersion || '暂无' }}</el-descriptions-item>
-              <el-descriptions-item label="模版版本">{{ parsedDeviceInfo.controllerVersion || '暂无' }}</el-descriptions-item>
-              <el-descriptions-item label="设备版本号">{{ parsedDeviceInfo.version || '暂无' }}</el-descriptions-item>
-              <el-descriptions-item label="收养报文">
-                <div style="white-space: pre-wrap;">{{ parsedDeviceInfo.adoptResp || '暂无' }}</div>
-              </el-descriptions-item>
-            </el-descriptions>
-          </el-tab-pane>
-
-          <!-- Tab 3: 审核信息 -->
-          <el-tab-pane label="审核信息">
-            <el-descriptions :column="1" border size="medium">
-              <!-- 测试接口人 -->
-              <el-descriptions-item label="测试接口人">
-                <div>
-                  <div><strong>审核人：</strong>{{ detail.testContact || '暂无' }}</div>
-                  <div><strong>审核状态：</strong><el-tag :type="approvalTag(detail.testContactApproval)">{{ getApprovalStatusName(detail.testContactApproval) || '未审核' }}</el-tag></div>
-                  <div><strong>审核意见：</strong>{{ detail.testContactComment || '无' }}</div>
-                </div>
-              </el-descriptions-item>
-
-              <!-- 研发接口人 -->
-              <el-descriptions-item label="研发接口人">
-                <div>
-                  <div><strong>审核人：</strong>{{ detail.devContact || '暂无' }}</div>
-                  <div><strong>审核状态：</strong><el-tag :type="approvalTag(detail.devContactApproval)">{{ getApprovalStatusName(detail.devContactApproval) || '未审核' }}</el-tag></div>
-                  <div><strong>审核意见：</strong>{{ detail.devContactComment || '无' }}</div>
-                </div>
-              </el-descriptions-item>
-
-              <!-- 测试组长 -->
-              <el-descriptions-item label="测试组长">
-                <div>
-                  <div><strong>审核人：</strong>{{ detail.testLeader || '暂无' }}</div>
-                  <div><strong>审核状态：</strong><el-tag :type="approvalTag(detail.testLeaderApproval)">{{ getApprovalStatusName(detail.testLeaderApproval) || '未审核' }}</el-tag></div>
-                  <div><strong>审核意见：</strong>{{ detail.testLeaderComment || '无' }}</div>
-                </div>
-              </el-descriptions-item>
-
-              <!-- 研发组长 -->
-              <el-descriptions-item label="研发组长">
-                <div>
-                  <div><strong>审核人：</strong>{{ detail.devLeader || '暂无' }}</div>
-                  <div><strong>审核状态：</strong><el-tag :type="approvalTag(detail.devLeaderApproval)">{{ getApprovalStatusName(detail.devLeaderApproval) || '未审核' }}</el-tag></div>
-                  <div><strong>审核意见：</strong>{{ detail.devLeaderComment || '无' }}</div>
-                </div>
-              </el-descriptions-item>
-            </el-descriptions>
-          </el-tab-pane>
-
-          <!-- Tab 4: 历史记录 -->
-          <el-tab-pane label="历史记录">
-            <div v-if="approvalHistory.length === 0" style="text-align: center; padding: 20px;">
-              暂无审批历史记录
-            </div>
-            <div v-else>
-              <div v-for="(round, index) in groupedApprovalHistory" :key="index">
-                <h3>第 {{ round.round }} 轮审批</h3>
-                <el-timeline>
-                  <el-timeline-item
-                    v-for="(record, idx) in round.records"
-                    :key="idx"
-                    :timestamp="formatTimestamp(record.approvedAt)"
-                    placement="top"
-                  >
-                    <el-card>
-                      <div><strong>审批角色：</strong>{{ getApproverRoleName(record.approverRole) }}</div>
-                      <div><strong>审批人：</strong>{{ record.approverUserName }}</div>
-                      <div><strong>审批状态：</strong><el-tag :type="approvalTag(record.approvalStatus)">{{getApprovalStatusName(record.approvalStatus)}}</el-tag></div>
-                      <div><strong>审批意见：</strong>{{ record.comment || '无' }}</div>
-                    </el-card>
-                  </el-timeline-item>
-                </el-timeline>
-                <el-divider v-if="index < groupedApprovalHistory.length - 1"></el-divider>
-              </div>
-            </div>
-          </el-tab-pane>
-        </el-tabs>
-
-        <!-- 底部按钮 -->
-        <div slot="footer" class="dialog-footer">
+        <div slot="actions">
           <el-button type="success" size="small" @click="handleApprove(detail)">通过</el-button>
           <el-button type="danger" size="small" @click="openRejectDialog(detail)">驳回</el-button>
           <el-button size="small" @click="detailVisible = false">关闭</el-button>
         </div>
-
-      </el-dialog>
+      </ApplicationDetailView>
 
       <el-dialog
         :visible.sync="rejectDialogVisible"
@@ -211,7 +104,6 @@
       </el-dialog>
 
 
-
       <!-- 分页 -->
       <pagination />
     </div>
@@ -219,27 +111,28 @@
 </template>
 
 <script>
-import crudDeviceApplicationForm from '@/api/deviceApplicationForm'
+import crudApplicationForm from '@/api/applicationForm'
 import CRUD, { presenter, header, form, crud } from '@crud/crud'
 import rrOperation from '@crud/RR.operation'
 import crudOperation from '@crud/CRUD.operation'
 import pagination from '@crud/Pagination'
-import {approveApplication} from '@/api/deviceApplicationForm'
+import {approveApplication} from '@/api/applicationForm'
+import ApplicationDetailView from '@/views/application/summary/ApplicationDetailView.vue'
 
 const defaultForm = {
 }
 
 export default {
-  name: 'DeviceApplicationForm',
-  components: { pagination, crudOperation, rrOperation },
+  name: 'ApplicationForm',
+  components: { pagination, crudOperation, rrOperation, ApplicationDetailView},
   mixins: [presenter(), header(), form(defaultForm), crud()],
   cruds() {
     return CRUD({
       title: '申请单接口',
-      url: 'api/deviceApplicationForm/pending-approvals',
+      url: 'api/applicationForm/pending-approvals',
       idField: 'id',
       sort: 'id,desc',
-      crudMethod: { ...crudDeviceApplicationForm },
+      crudMethod: { ...crudApplicationForm },
       optShow: { add: false, edit: false, del: false }
     })
   },
@@ -280,9 +173,9 @@ export default {
 
 
       permission: {
-        add: ['admin', 'deviceApplicationForm:add'],
-        edit: ['admin', 'deviceApplicationForm:edit'],
-        del: ['admin', 'deviceApplicationForm:del'],
+        add: ['admin', 'applicationForm:add'],
+        edit: ['admin', 'applicationForm:edit'],
+        del: ['admin', 'applicationForm:del'],
       },
       rules: {
         uuid: [{ required: true, message: '申请单不能为空', trigger: 'blur' }],
@@ -312,13 +205,13 @@ export default {
       this.detailVisible = true
 
       // 解析设备信息
-      if (row.deviceInfoDetails) {
+      if (row.dataDetails) {
         try {
-          this.parsedDeviceInfo = typeof row.deviceInfoDetails === 'string'
-            ? JSON.parse(row.deviceInfoDetails)
-            : row.deviceInfoDetails
+          this.parsedDeviceInfo = typeof row.dataDetails === 'string'
+            ? JSON.parse(row.dataDetails)
+            : row.dataDetails
         } catch (e) {
-          console.error('设备信息Details字段不是有效的JSON字符串:', row.deviceInfoDetails)
+          console.error('设备信息Details字段不是有效的JSON字符串:', row.dataDetails)
           console.error('解析设备信息失败:', e)
           this.parsedDeviceInfo = {}
         }

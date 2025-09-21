@@ -8,7 +8,7 @@
     top="3vh"
     style="min-width: 900px;"
   >
-    <el-form ref="form" :model="form" :rules="rules" size="small" label-width="100px">
+    <el-form ref="form" :model="form" :rules="computedRules" size="small" label-width="100px">
 
       <!-- 在设备信息卡片之前添加申请信息卡片 -->
       <el-card shadow="never" style="margin-bottom: 20px;">
@@ -54,105 +54,60 @@
       <el-card shadow="never" style="margin-bottom: 20px;">
         <div slot="header" style="font-weight: bold; font-size: 16px;">设备信息</div>
         <el-row :gutter="20">
-
-          <!-- 设备型号 + 设备版本 -->
-          <el-col :span="12">
-            <el-form-item label="设备型号" prop="deviceDetail.model">
-              <el-input v-model="form.deviceDetail.model" placeholder="如：ER7206, SG2008" style="width: 100%;" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="设备版本" prop="deviceDetail.modelVersion">
-              <el-input v-model="form.deviceDetail.modelVersion" placeholder="如：1.0" style="width: 100%;" />
-            </el-form-item>
-          </el-col>
-
-          <!-- 设备类型 (model_type) -->
-          <el-col :span="12">
-            <el-form-item label="设备类型" prop="deviceDetail.modelType">
-              <el-select v-model="form.deviceDetail.modelType" placeholder="请选择设备类型" style="width: 100%;">
-                <el-option label="普通设备 (NORMAL)" value="NORMAL" />
-                <el-option label="Pro设备 (PRO)" value="PRO" />
-                <el-option label="一体机 (COMBINED)" value="COMBINED" />
-                <el-option label="PRO管理普通设备 (PRO_FREE)" value="PRO_FREE" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-
-          <!-- 设备种类 (type) -->
-          <el-col :span="12">
-            <el-form-item label="设备种类" prop="deviceDetail.type">
-              <el-select v-model="form.deviceDetail.type" placeholder="请选择设备种类" style="width: 100%;">
-                <el-option label="网关 (gateway)" value="gateway" />
-                <el-option label="交换机 (switch)" value="switch" />
-                <el-option label="AP (ap)" value="ap" />
-                <el-option label="OLT (olt)" value="olt" />
-                <el-option label="其他" value="other" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-
-          <!-- 硬件版本 (hw_version) - 可选 -->
-          <el-col :span="12">
-            <el-form-item label="硬件版本" prop="deviceDetail.hwVersion">
-              <el-input
-                v-model="form.deviceDetail.hwVersion"
-                placeholder="如：v1.2.3（可选）"
-                style="width: 100%;"
-              />
-            </el-form-item>
-          </el-col>
-
-          <!-- 模版版本 (controller_version) -->
-          <el-col :span="12">
-            <el-form-item label="模版版本" prop="deviceDetail.controllerVersion">
-              <el-input
-                v-model="form.deviceDetail.controllerVersion"
-                placeholder="如：5.15.21.1"
-                style="width: 100%;"
-                clearable
-              />
-            </el-form-item>
-          </el-col>
-
-          <!-- 设备版本 (version) -->
-          <el-col :span="12">
-            <el-form-item label="设备版本号" prop="deviceDetail.version">
-              <el-input
-                v-model="form.deviceDetail.version"
-                placeholder="如：1.0"
-                style="width: 100%;"
-              />
-            </el-form-item>
-          </el-col>
-
-          <!-- 收养报文 (adopt_resp) -->
-          <el-col :span="24">
-            <el-form-item label="收养报文" prop="deviceDetail.adoptResp" class="adopt-resp-item">
-              <el-input
-                v-model="form.deviceDetail.adoptResp"
-                type="textarea"
-                :rows="4"
-                placeholder='请填写转义后的JSON字符串，例如：{"modelId": "123"}'
-                style="width: 100%;"
-              />
-              <small style="color: #999; margin-top: 5px; display: block;">
-                收养阶段组件协商报文 body 内容，参考：
-                <a
-                  href="https://pdconfluence.tp-link.com/display/SMBSHAR/Device+Negonation-OSG"
-                  target="_blank"
-                  style="color: #409EFF;"
+          <!-- 动态设备信息字段 -->
+          <template v-if="dataFields && dataFields.length > 0">
+            <el-col
+              v-for="(field, index) in dataFields"
+              :key="index"
+              :span="field.span || 12"
+            >
+              <el-form-item :label="field.label" :prop="'dataDetails.' + field.prop">
+                <!-- 输入框 -->
+                <el-input
+                  v-if="field.type === 'input' || !field.type"
+                  v-model="form.dataDetails[field.prop]"
+                  :placeholder="field.placeholder"
+                  style="width: 100%;"
+                />
+                <!-- 下拉选择框 -->
+                <el-select
+                  v-else-if="field.type === 'select'"
+                  v-model="form.dataDetails[field.prop]"
+                  :placeholder="field.placeholder"
+                  style="width: 100%;"
                 >
-                  Device Negotiation-OSG
-                </a>
-              </small>
-            </el-form-item>
-          </el-col>
+                  <el-option
+                    v-for="option in field.options"
+                    :key="option.value"
+                    :label="option.label"
+                    :value="option.value"
+                  />
+                </el-select>
+                <!-- 文本域 -->
+                <el-input
+                  v-else-if="field.type === 'textarea'"
+                  v-model="form.dataDetails[field.prop]"
+                  type="textarea"
+                  :rows="field.rows || 4"
+                  :placeholder="field.placeholder"
+                  style="width: 100%;"
+                />
+              </el-form-item>
+            </el-col>
+          </template>
+          <template v-else>
+            <!-- 当没有提供字段配置时的默认提示 -->
+            <el-col :span="24">
+              <div style="text-align: center; color: #999; padding: 20px;">
+                未配置设备信息字段
+              </div>
+            </el-col>
+          </template>
         </el-row>
       </el-card>
 
       <!-- 审核信息区块 -->
-      <el-card shadow="never" style="margin-bottom: 20px;">
+      <el-card v-if="showApprovalSection" shadow="never" style="margin-bottom: 20px;">
         <div slot="header" style="font-weight: bold; font-size: 16px;">审核信息</div>
         <el-row :gutter="20">
 
@@ -199,7 +154,7 @@
     <!-- 在 dialog 的 footer 中添加提交申请按钮 -->
     <div slot="footer" class="dialog-footer">
       <el-button type="text" @click="handleClose">取消</el-button>
-      <el-button :loading="saveLoading" type="info" @click="handleSaveDraft">保存草稿</el-button>
+      <el-button :loading="saveLoading" type="info" @click="handleSaveDraft">保存</el-button>
       <el-button :loading="submitLoading" type="primary" @click="handleSubmit">提交申请</el-button>
     </div>
   </el-dialog>
@@ -208,7 +163,8 @@
 <script>
 import { getAll } from '@/api/system/role'
 import { getUsersByRoleId } from '@/api/system/user'
-import { submitApplication, saveDraft } from '@/api/deviceApplicationForm'
+import { submitApplication, saveDraft } from '@/api/applicationForm'
+import { getDataFieldsByType, getDataRulesByType } from '@/utils/dataFields'
 
 // 更新默认表单值
 const defaultForm = {
@@ -223,16 +179,7 @@ const defaultForm = {
   testContact: null,
   devLeader: null,
   testLeader: null,
-  deviceDetail: {
-    model: null,
-    modelVersion: null,
-    modelType: null, // NORMAL / PRO / COMBINED / PRO_FREE
-    type: null, // gateway / switch / ap / olt
-    hwVersion: null, // v1.2.3（可选）
-    controllerVersion: null, // 5.15.21.1
-    version: null, // 1.0（设备版本）
-    adoptResp: '{"modelId": "123"}' // 默认示例值
-  }
+  dataDetails: {}
 }
 
 export default {
@@ -249,6 +196,36 @@ export default {
     mode: {
       type: String,
       default: 'add' // 'add' 或 'edit'
+    },
+    showApprovalSection: {
+      type: Boolean,
+      default: true
+    },
+    devContactUsers: {
+      type: Array,
+      default: () => []
+    },
+    testContactUsers: {
+      type: Array,
+      default: () => []
+    },
+    devLeaderUsers: {
+      type: Array,
+      default: () => []
+    },
+    testLeaderUsers: {
+      type: Array,
+      default: () => []
+    },
+    // 新增：设备信息字段配置
+    dataFields: {
+      type: Array,
+      default: () => []
+    },
+    // 新增：设备数据类型，用于区分不同设备类型
+    applicationDataType: {
+      type: Number,
+      default: 1
     }
   },
   data() {
@@ -257,53 +234,12 @@ export default {
       submitLoading: false,
       form: { ...defaultForm },
 
-      // 存储各角色的用户列表
-      devContactUsers: [],
-      testContactUsers: [],
-      devLeaderUsers: [],
-      testLeaderUsers: [],
-
-      rules: {
-        'deviceDetail.model': [
-          { required: true, message: '设备型号不能为空', trigger: 'blur' }
-        ],
-        'deviceDetail.modelVersion': [
-          { required: true, message: '设备版本不能为空', trigger: 'blur' }
-        ],
-        'deviceDetail.modelType': [
-          { required: true, message: '请选择设备类型', trigger: 'change' }
-        ],
-        'deviceDetail.type': [
-          { required: true, message: '请选择设备种类', trigger: 'change' }
-        ],
-        'deviceDetail.controllerVersion': [
-          { required: true, message: '模版版本不能为空', trigger: 'blur' }
-        ],
-        'deviceDetail.version': [
-          { required: true, message: '设备版本不能为空', trigger: 'blur' }
-        ],
-        'deviceDetail.adoptResp': [
-          { required: true, message: '收养报文不能为空', trigger: 'blur' },
-          { validator: this.validateAdoptResp, trigger: 'blur' }
-        ],
+      baseRules: {
         applicationTitle: [
           { required: true, message: '申请单标题不能为空', trigger: 'blur' }
         ],
         applicationReason: [
           { required: true, message: '申请理由不能为空', trigger: 'blur' }
-        ],
-        // === 审核信息校验规则 ===
-        devContact: [
-          { required: true, message: '请选择研发接口人', trigger: 'change' }
-        ],
-        testContact: [
-          { required: true, message: '请选择设备接口人', trigger: 'change' }
-        ],
-        devLeader: [
-          { required: true, message: '请选择研发组长', trigger: 'change' }
-        ],
-        testLeader: [
-          { required: true, message: '请选择设备组长', trigger: 'change' }
         ]
       }
     }
@@ -319,13 +255,50 @@ export default {
     },
     title() {
       return this.mode === 'edit' ? '编辑申请单' : '新增申请单'
+    },
+    computedRules() {
+      const rules = { ...this.baseRules }
+
+      // 如果显示审核信息区域，则添加审核相关的校验规则
+      if (this.showApprovalSection) {
+        rules.devContact = [
+          { required: true, message: '请选择研发接口人', trigger: 'change' }
+        ]
+        rules.testContact = [
+          { required: true, message: '请选择设备接口人', trigger: 'change' }
+        ]
+        rules.devLeader = [
+          { required: true, message: '请选择研发组长', trigger: 'change' }
+        ]
+        rules.testLeader = [
+          { required: true, message: '请选择设备组长', trigger: 'change' }
+        ]
+      }
+
+      // 根据设备数据类型获取设备字段的校验规则
+      const dataRules = getDataRulesByType(this.applicationDataType)
+      Object.assign(rules, dataRules)
+
+      return rules
     }
   },
   watch: {
     formData: {
       handler(newVal) {
         if (newVal && Object.keys(newVal).length > 0) {
-          this.form = { ...defaultForm, ...newVal }
+          // 使用深拷贝确保不会影响原始数据
+          const newData = JSON.parse(JSON.stringify(newVal))
+          // 确保 dataDetails 对象存在
+          if (!newData.dataDetails) {
+            newData.dataDetails = { ...defaultForm.dataDetails }
+          } else {
+            // 合并默认值和传入值，确保所有字段都存在
+            newData.dataDetails = { ...defaultForm.dataDetails, ...newData.dataDetails }
+          }
+          this.form = { ...defaultForm, ...newData }
+        } else if (!newVal || Object.keys(newVal).length === 0) {
+          // 如果没有传入数据，则重置为默认表单
+          this.resetForm()
         }
       },
       immediate: true,
@@ -333,32 +306,39 @@ export default {
     },
     visible(newVal) {
       if (newVal) {
-        // 加载审批人列表
-        this.loadApproverUsersByRoles()
+        // 如果没有传入审批人列表，则加载审批人列表
+        if (this.devContactUsers.length === 0 &&
+            this.testContactUsers.length === 0 &&
+            this.devLeaderUsers.length === 0 &&
+            this.testLeaderUsers.length === 0) {
+          this.loadApproverUsersByRoles()
+        }
       }
+    },
+    // 监听表单变化，防止设备详情被重置
+    'form.dataDetails': {
+      handler(newVal) {
+        // 确保 dataDetails 始终是一个对象
+        if (!newVal) {
+          this.$set(this.form, 'dataDetails', { ...defaultForm.dataDetails })
+        }
+      },
+      deep: true
     }
   },
   methods: {
-    validateAdoptResp(rule, value, callback) {
-      if (!value) {
-        return callback(new Error('收养报文不能为空'))
-      }
-      try {
-        JSON.parse(value)
-        callback()
-      } catch (e) {
-        callback(new Error('收养报文必须是合法的转义JSON字符串'))
-      }
-    },
-
     handleClose() {
       this.$emit('close')
       this.resetForm()
     },
 
     resetForm() {
-      this.form = { ...defaultForm }
-      this.$refs.form && this.$refs.form.resetFields()
+      this.form = JSON.parse(JSON.stringify(defaultForm))
+      if (this.$refs.form) {
+        this.$nextTick(() => {
+          this.$refs.form.resetFields()
+        })
+      }
     },
 
     async handleSubmit() {
@@ -369,11 +349,7 @@ export default {
         this.submitLoading = true
 
         // 构造提交数据
-        const submitData = {
-          ...this.form,
-          deviceDetail: JSON.stringify(this.form.deviceDetail),
-          applicationType: this.getApplicationType()
-        }
+        const submitData = this.buildSubmitData()
 
         await submitApplication(submitData)
         this.$message.success('申请提交成功')
@@ -384,6 +360,36 @@ export default {
         this.$message.error('提交申请失败')
       } finally {
         this.submitLoading = false
+      }
+    },
+
+    // 构建提交数据，适配不同的使用场景
+    buildSubmitData() {
+      // 检查是否需要将嵌套结构转换为扁平结构
+      // 这通常用于 devices/one/index.vue 这样的场景
+      const isFlatStructureNeeded = this.$parent && this.$parent.$options.name === 'DeviceInfo'
+
+      if (isFlatStructureNeeded) {
+        // 转换为扁平结构
+        const flatData = {
+          ...this.form,
+          dataDetails: JSON.stringify(this.form.dataDetails),
+          applicationType: this.getApplicationType()
+        }
+
+        // 将 dataDetails 中的字段提取到顶层
+        Object.keys(this.form.dataDetails).forEach(key => {
+          flatData[key] = this.form.dataDetails[key]
+        })
+
+        return flatData
+      } else {
+        // 保持嵌套结构
+        return {
+          ...this.form,
+          dataDetails: JSON.stringify(this.form.dataDetails),
+          applicationType: this.getApplicationType()
+        }
       }
     },
 
@@ -405,12 +411,7 @@ export default {
         await this.$refs.form.validate()
 
         // 构造提交数据
-        const submitData = {
-          ...this.form,
-          id: null,
-          deviceDetail: JSON.stringify(this.form.deviceDetail),
-          applicationType: this.getApplicationType()
-        }
+        const submitData = this.buildSubmitData()
 
         // 调用保存草稿接口
         await saveDraft(submitData)
@@ -458,6 +459,14 @@ export default {
           const users = await getUsersByRoleId(testLeaderRole.id)
           this.testLeaderUsers = users.content || users
         }
+
+        // 触发事件，通知父组件更新审批人列表
+        this.$emit('update-approver-users', {
+          devContactUsers: this.devContactUsers,
+          testContactUsers: this.testContactUsers,
+          devLeaderUsers: this.devLeaderUsers,
+          testLeaderUsers: this.testLeaderUsers
+        })
       } catch (error) {
         console.error('获取审批人列表失败:', error)
         this.$message.error('获取审批人列表失败')

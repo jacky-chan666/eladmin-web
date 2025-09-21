@@ -2,7 +2,7 @@ import request from '@/utils/request'
 
 export function add(data) {
   return request({
-    url: 'api/deviceApplicationForm',
+    url: 'api/applicationForm',
     method: 'post',
     data
   })
@@ -10,7 +10,7 @@ export function add(data) {
 
 export function del(ids) {
   return request({
-    url: 'api/deviceApplicationForm/',
+    url: 'api/applicationForm/',
     method: 'delete',
     data: ids
   })
@@ -18,7 +18,7 @@ export function del(ids) {
 
 export function edit(data) {
   return request({
-    url: 'api/deviceApplicationForm',
+    url: 'api/applicationForm',
     method: 'put',
     data
   })
@@ -27,7 +27,7 @@ export function edit(data) {
 // 审批申请单
 export function approveApplication(applicationFormId, approverUserName, approvalStatus, comment) {
   return request({
-    url: 'api/deviceApplicationForm/approve',
+    url: 'api/applicationForm/approve',
     method: 'post',
     params: {
       applicationFormId,
@@ -40,7 +40,7 @@ export function approveApplication(applicationFormId, approverUserName, approval
 
 export function submitApplication(data) {
   return request({
-    url: 'api/deviceApplicationForm/submit',
+    url: 'api/applicationForm/submit',
     method: 'post',
     data
   })
@@ -49,7 +49,7 @@ export function submitApplication(data) {
 // 新增保存草稿功能
 export function saveDraft(data) {
   return request({
-    url: 'api/deviceApplicationForm/save-draft',
+    url: 'api/applicationForm/save-draft',
     method: 'post',
     data
   })
@@ -58,7 +58,7 @@ export function saveDraft(data) {
 // 撤回申请单功能
 export function withdrawApplication(applicationFormId, applicantUserName) {
   return request({
-    url: 'api/deviceApplicationForm/withdraw',
+    url: 'api/applicationForm/withdraw',
     method: 'post',
     params: {
       applicationFormId,
@@ -70,7 +70,7 @@ export function withdrawApplication(applicationFormId, applicantUserName) {
 // 删除申请单功能
 export function deleteApplicationForm(applicationFormId, applicantUserName) {
   return request({
-    url: 'api/deviceApplicationForm/delete',
+    url: 'api/applicationForm/delete',
     method: 'post',
     params: {
       applicationFormId,

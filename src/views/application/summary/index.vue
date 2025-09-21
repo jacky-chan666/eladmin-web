@@ -97,130 +97,26 @@
       </el-table>
 
       <!-- 查看详情的弹窗 -->
-      <el-dialog
+      <ApplicationDetailView
         :visible.sync="detailVisible"
+        :detail-data="detail"
         title="申请单详情"
-        width="800px"
-        top="5vh"
-        :close-on-click-modal="false"
-      >
-        <el-tabs type="border-card">
-          <!-- Tab 1: 申请信息 -->
-          <el-tab-pane label="单据信息">
-            <el-descriptions :column="1" border size="medium">
-              <el-descriptions-item label="申请单ID">{{ detail.uuid }}</el-descriptions-item>
-              <el-descriptions-item label="申请人">{{ detail.applicantUserName }}</el-descriptions-item>
-              <el-descriptions-item label="表单标题">{{ detail.applicationTitle }}</el-descriptions-item>
-              <el-descriptions-item label="申请日期">{{ detail.createdAt }}</el-descriptions-item>
-              <el-descriptions-item label="申请类型">{{ getApplicationTypeName(detail.applicationType) }}</el-descriptions-item>
-              <el-descriptions-item label="数据类型">{{ getApplicationDataTypeName(detail.applicationDataType) }}</el-descriptions-item>
-              <el-descriptions-item label="申请状态">{{ getStatusName(detail.status) }}</el-descriptions-item>
-              <el-descriptions-item label="申请理由">
-                <div style="white-space: pre-wrap;">{{ detail.applicationReason || '暂无' }}</div>
-              </el-descriptions-item>
-            </el-descriptions>
-          </el-tab-pane>
+        @close="detailVisible = false"
+      />
 
-          <!-- Tab 2: 设备信息 -->
-          <el-tab-pane label="设备信息">
-            <div v-if="loadingDeviceInfo">正在加载设备信息...</div>
-            <el-descriptions v-else :column="1" border size="medium">
-              <el-descriptions-item label="设备型号">{{ parsedDeviceInfo.model || '暂无' }}</el-descriptions-item>
-              <el-descriptions-item label="设备版本">{{ parsedDeviceInfo.modelVersion || '暂无' }}</el-descriptions-item>
-              <el-descriptions-item label="设备类型">{{ getModelTypeName(parsedDeviceInfo.modelType) || '暂无' }}</el-descriptions-item>
-              <el-descriptions-item label="设备种类">{{ getTypeName(parsedDeviceInfo.type) || '暂无' }}</el-descriptions-item>
-              <el-descriptions-item label="硬件版本">{{ parsedDeviceInfo.hwVersion || '暂无' }}</el-descriptions-item>
-              <el-descriptions-item label="模版版本">{{ parsedDeviceInfo.controllerVersion || '暂无' }}</el-descriptions-item>
-              <el-descriptions-item label="设备版本号">{{ parsedDeviceInfo.version || '暂无' }}</el-descriptions-item>
-              <el-descriptions-item label="收养报文">
-                <div style="white-space: pre-wrap;">{{ parsedDeviceInfo.adoptResp || '暂无' }}</div>
-              </el-descriptions-item>
-            </el-descriptions>
-          </el-tab-pane>
 
-          <!-- Tab 3: 审核信息 -->
-          <el-tab-pane label="审核信息">
-            <el-descriptions :column="1" border size="medium">
-              <!-- 测试接口人 -->
-              <el-descriptions-item label="测试接口人">
-                <div>
-                  <div><strong>审核人：</strong>{{ detail.testContact || '暂无' }}</div>
-                  <div><strong>审核状态：</strong><el-tag :type="approvalTag(detail.testContactApproval)">{{ getApprovalStatusName(detail.testContactApproval) || '未审核' }}</el-tag></div>
-                  <div><strong>审核意见：</strong>{{ detail.testContactComment || '无' }}</div>
-                </div>
-              </el-descriptions-item>
-
-              <!-- 研发接口人 -->
-              <el-descriptions-item label="研发接口人">
-                <div>
-                  <div><strong>审核人：</strong>{{ detail.devContact || '暂无' }}</div>
-                  <div><strong>审核状态：</strong><el-tag :type="approvalTag(detail.devContactApproval)">{{ getApprovalStatusName(detail.devContactApproval) || '未审核' }}</el-tag></div>
-                  <div><strong>审核意见：</strong>{{ detail.devContactComment || '无' }}</div>
-                </div>
-              </el-descriptions-item>
-
-              <!-- 测试组长 -->
-              <el-descriptions-item label="测试组长">
-                <div>
-                  <div><strong>审核人：</strong>{{ detail.testLeader || '暂无' }}</div>
-                  <div><strong>审核状态：</strong><el-tag :type="approvalTag(detail.testLeaderApproval)">{{ getApprovalStatusName(detail.testLeaderApproval) || '未审核' }}</el-tag></div>
-                  <div><strong>审核意见：</strong>{{ detail.testLeaderComment || '无' }}</div>
-                </div>
-              </el-descriptions-item>
-
-              <!-- 研发组长 -->
-              <el-descriptions-item label="研发组长">
-                <div>
-                  <div><strong>审核人：</strong>{{ detail.devLeader || '暂无' }}</div>
-                  <div><strong>审核状态：</strong><el-tag :type="approvalTag(detail.devLeaderApproval)">{{ getApprovalStatusName(detail.devLeaderApproval) || '未审核' }}</el-tag></div>
-                  <div><strong>审核意见：</strong>{{ detail.devLeaderComment || '无' }}</div>
-                </div>
-              </el-descriptions-item>
-            </el-descriptions>
-          </el-tab-pane>
-
-          <!-- Tab 4: 历史记录 -->
-          <el-tab-pane label="历史记录">
-            <div v-if="approvalHistory.length === 0" style="text-align: center; padding: 20px;">
-              暂无审批历史记录
-            </div>
-            <div v-else>
-              <div v-for="(round, index) in groupedApprovalHistory" :key="index">
-                <h3>第 {{ round.round }} 轮审批</h3>
-                <el-timeline>
-                  <el-timeline-item
-                    v-for="(record, idx) in round.records"
-                    :key="idx"
-                    :timestamp="formatTimestamp(record.approvedAt)"
-                    placement="top"
-                  >
-                    <el-card>
-                      <div><strong>审批角色：</strong>{{ getApproverRoleName(record.approverRole) }}</div>
-                      <div><strong>审批人：</strong>{{ record.approverUserName }}</div>
-                      <div><strong>审批状态：</strong><el-tag :type="approvalTag(record.approvalStatus)">{{getApprovalStatusName(record.approvalStatus)}}</el-tag></div>
-                      <div><strong>审批意见：</strong>{{ record.comment || '无' }}</div>
-                    </el-card>
-                  </el-timeline-item>
-                </el-timeline>
-                <el-divider v-if="index < groupedApprovalHistory.length - 1"></el-divider>
-              </div>
-            </div>
-          </el-tab-pane>
-        </el-tabs>
-
-        <div slot="footer" class="dialog-footer">
-          <el-button @click="detailVisible = false">关闭</el-button>
-        </div>
-      </el-dialog>
       <!-- 申请单表单弹窗 -->
       <ApplicationFormDialog
         :visible.sync="formDialogVisible"
         :form-data="currentFormData"
         :mode="formMode"
+        :application-data-type="currentApplicationDataType"
+        :data-fields="currentDataFields"
         @close="handleFormClose"
         @submit-success="handleFormSubmitSuccess"
         @save-success="handleFormSaveSuccess"
       />
+
       <!-- 分页 -->
       <pagination />
     </div>
@@ -228,29 +124,31 @@
 </template>
 
 <script>
-import crudDeviceApplicationForm from '@/api/deviceApplicationForm.js'
+import crudApplicationForm from '@/api/applicationForm.js'
 import CRUD, { presenter, header, form, crud } from '@crud/crud'
 import rrOperation from '@crud/RR.operation'
 import crudOperation from '@crud/CRUD.operation'
 import pagination from '@crud/Pagination'
 import ApplicationFormDialog from './ApplicationFormDialog.vue'
-import { withdrawApplication, deleteApplicationForm } from '@/api/deviceApplicationForm'
+import ApplicationDetailView from './ApplicationDetailView.vue'
+import { withdrawApplication, deleteApplicationForm } from '@/api/applicationForm'
+import { getDataFieldsByType } from '@/utils/dataFields'
 
 const defaultForm = {
 
 }
 
 export default {
-  name: 'DeviceApplicationForm',
-  components: { pagination, crudOperation, rrOperation, ApplicationFormDialog },
+  name: 'ApplicationForm',
+  components: { pagination, crudOperation, rrOperation, ApplicationFormDialog, ApplicationDetailView },
   mixins: [presenter(), header(), form(defaultForm), crud()],
   cruds() {
     return CRUD({
       title: '申请单接口',
-      url: 'api/deviceApplicationForm',
+      url: 'api/applicationForm',
       idField: 'id',
       sort: 'id,desc',
-      crudMethod: { ...crudDeviceApplicationForm },
+      crudMethod: { ...crudApplicationForm },
       optShow: { add: false, edit: false, del: false }
     })
   },
@@ -259,15 +157,13 @@ export default {
       // 新增：详情相关状态
       detailVisible: false,
       detail: {},
-      loadingDeviceInfo: false,
-      parsedDeviceInfo: {}, // 存储解析后的设备信息
-      approvalHistory: [], // 存储解析后的审批历史记录
-      groupedApprovalHistory: [], // 按轮次分组的审批历史记录
 
       // 表单弹窗相关
       formDialogVisible: false,
       currentFormData: {},
       formMode: 'add', // 'add' 或 'edit'
+      currentApplicationDataType: 1, // 当前申请单的设备数据类型
+      currentDataFields: [], // 当前设备字段配置
 
       // 申请单状态常量定义
       STATUS_DRAFT: -1, // 草稿
@@ -290,9 +186,9 @@ export default {
       APPROVAL_STATUS_REJECTED: 2,
 
       permission: {
-        add: ['admin', 'deviceApplicationForm.js:add'],
-        edit: ['admin', 'deviceApplicationForm.js:edit'],
-        del: ['admin', 'deviceApplicationForm.js:del']
+        add: ['admin', 'applicationForm.js:add'],
+        edit: ['admin', 'applicationForm.js:edit'],
+        del: ['admin', 'applicationForm.js:del']
       },
       rules: {
         uuid: [{ required: true, message: '申请单不能为空', trigger: 'blur' }],
@@ -301,201 +197,108 @@ export default {
         applicationType: [{ required: true, message: '申请单类型', trigger: 'blur' }],
         applicationDataType: [{ required: true, message: '申请单数据类型', trigger: 'blur' }],
         applicationTitle: [{ required: true, message: '申请单标题不能为空', trigger: 'blur' }],
-        status: [{ required: true, message: '申请状态不能为空', trigger: 'blur' }]
+        applicationReason: [{ required: true, message: '申请理由不能为空', trigger: 'blur' }]
       },
-      queryTypeOptions: [
-        { key: 'uuid', display_name: '申请单ID' },
-        { key: 'applicantUserName', display_name: '申请人姓名' },
-        { key: 'applicationType', display_name: '申请单类型' },
-        { key: 'applicationDataType', display_name: '申请单数据类型' }
-      ],
-      showAll: false, // 控制是否显示全部
-      currentUser: this.$store.getters.user.username // 获取当前用户
+      showAll: false // 控制是否显示全部申请单
     }
   },
-  mounted() {
-    // 初始化查询
-    this.updateQuery()
-  },
   methods: {
-    isSelf(row) {
-      const currentUserName = this.$store.getters.user.username
-      return row.applicantUserName === currentUserName
-    },
-
-    // 开关变化处理
-    onSwitchChange() {
-      this.updateQuery()
-    },
-
-    // 更新查询条件
-    updateQuery() {
-      if (this.showAll) {
-        // 显示全部：清空 applicantName 查询条件
-        this.$delete(this.query, 'applicantUserName') // 或者 this.query.applicantName = null
-      } else {
-        // 仅显示当前用户
-        this.query.applicantUserName = this.currentUser
+    // 获取申请单类型名称
+    getApplicationTypeName(type) {
+      const typeMap = {
+        1: '新增',
+        2: '编辑',
+        3: '上线',
+        4: '下线'
       }
-      this.crud.toQuery() // 重新请求数据
+      return typeMap[type] || '未知'
     },
 
-    // 钩子：在获取数据前执行
-    [CRUD.HOOK.beforeRefresh]() {
-      // 确保每次刷新也遵循当前开关状态
-      if (!this.showAll) {
-        this.query.applicantUserName = this.currentUser
-      } else {
-        if (this.query.applicantUserName === this.currentUser) {
-          this.$delete(this.query, 'applicantUserName')
-        }
+    // 获取申请单数据类型名称
+    getApplicationDataTypeName(type) {
+      const typeMap = {
+        1: '第一种设备类型',
+        2: '第二种设备类型'
       }
-      return true
+      return typeMap[type] || '未知'
     },
 
-    // 钩子：页面加载后执行
-    [CRUD.HOOK.afterRefresh]() {
-      // 第一次加载时，如果没有 applicantName 查询条件，自动设置
-      if (!this.query.applicantUserName && !this.showAll) {
-        this.query.applicantUserName = this.currentUser
-        this.crud.toQuery()
-      }
-    },
-    // ============ 新增方法 ============
+    // 获取申请状态名称
+    getStatusName(status) {
+      // 确保状态值为数字类型
+      const statusValue = parseInt(status, 10)
 
-    // 处理点击"查看"
-    handleView(row) {
-      this.detail = { ...row } // 复制当前行数据
-      this.parsedDeviceInfo = {}
-      this.loadingDeviceInfo = true
-      this.detailVisible = true
-
-      // 解析设备信息
-      if (row.deviceInfoDetails) {
-        try {
-          this.parsedDeviceInfo = typeof row.deviceInfoDetails === 'string'
-            ? JSON.parse(row.deviceInfoDetails)
-            : row.deviceInfoDetails
-        } catch (e) {
-          console.error('解析设备信息失败:', e)
-          this.parsedDeviceInfo = {}
-        }
+      const statusMap = {
+        [this.STATUS_DRAFT]: '草稿',
+        [this.STATUS_SUBMITTED]: '已提交',
+        [this.STATUS_PENDING]: '待审批',
+        [this.STATUS_APPROVED]: '审批通过',
+        [this.STATUS_FIRMWARE_VERIFY]: '固件校验中',
+        [this.STATUS_FIRMWARE_FAILED]: '固件校验失败',
+        [this.STATUS_SYNCING]: '同步中',
+        [this.STATUS_SYNC_FAILED]: '同步失败',
+        [this.STATUS_COMPLETED]: '已完成',
+        [this.STATUS_REJECTED]: '已驳回',
+        [this.STATUS_AUTO_PROCESSING]: '自动处理中',
+        [this.STATUS_AUTO_FAILED]: '自动处理失败',
+        [this.STATUS_MANUAL_TRIGGERED]: '手动触发',
+        [this.STATUS_WITHDRAWN]: '已撤回'
       }
 
-      // 解析审批历史记录
-      this.parseApprovalHistory(row.approvalHistory)
-
-      this.loadingDeviceInfo = false
+      return statusMap[statusValue] || '未知状态'
     },
 
-    // 解析审批历史记录
-    parseApprovalHistory(history) {
-      try {
-        // 清空之前的记录
-        this.approvalHistory = []
-        this.groupedApprovalHistory = []
-
-        if (!history) return
-
-        // 解析JSON字符串
-        const historyData = typeof history === 'string' ? JSON.parse(history) : history
-
-        if (!Array.isArray(historyData) || historyData.length === 0) return
-
-        // 存储解析后的记录
-        this.approvalHistory = historyData
-
-        // 按轮次分组并排序
-        const grouped = {}
-        historyData.forEach(record => {
-          if (!grouped[record.round]) {
-            grouped[record.round] = []
-          }
-          grouped[record.round].push(record)
-        })
-
-        // 转换为数组并按轮次降序排列
-        this.groupedApprovalHistory = Object.keys(grouped)
-          .map(round => ({
-            round: parseInt(round),
-            records: grouped[round]
-          }))
-          .sort((a, b) => b.round - a.round) // 从高到低排序
-      } catch (e) {
-        console.error('解析审批历史记录失败:', e)
-        this.approvalHistory = []
-        this.groupedApprovalHistory = []
-      }
-    },
-    // 获取审批角色名称
-    getApproverRoleName(role) {
-      const roleMap = {
-        'test_contact': '测试接口人',
-        'dev_contact': '研发接口人',
-        'test_leader': '测试组长',
-        'dev_leader': '研发组长'
-      }
-      return roleMap[role] || role
-    },
     // 获取审批状态名称
     getApprovalStatusName(status) {
-      switch (parseInt(status)) {
-        case this.APPROVAL_STATUS_PENDING: return '待审批'
-        case this.APPROVAL_STATUS_APPROVED: return '通过'
-        case this.APPROVAL_STATUS_REJECTED: return '驳回'
-        default: return '未知'
+      const statusMap = {
+        [this.APPROVAL_STATUS_PENDING]: '待审批',
+        [this.APPROVAL_STATUS_APPROVED]: '通过',
+        [this.APPROVAL_STATUS_REJECTED]: '驳回'
       }
+      return statusMap[status] || '未知'
     },
 
-    // 格式化时间戳
-    formatTimestamp(timestamp) {
-      if (!timestamp) return '未知时间'
-      const date = new Date(timestamp)
-      return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
+    // 判断是否为本人的申请单
+    isSelf(row) {
+      // 从 Vuex store 获取当前用户信息
+      const currentUser = this.$store.getters.user
+      return row.applicantUserName === currentUser.username
     },
-    // 处理点击"填写"
+
+    // 处理查看详情
+    handleView(row) {
+      this.detail = { ...row }
+      this.detailVisible = true
+    },
+
+    // 处理填写/重新填写申请单
     handleFill(row) {
-      // 设置表单数据
-      this.currentFormData = {
-        id: row.id,
-        uuid: row.uuid,
-        applicationTitle: row.applicationTitle,
-        applicationReason: row.applicationReason,
-        applicationType: row.applicationType,
-        applicationDataType: row.applicationDataType,
-        applicantUserName: row.applicantUserName,
-        devContact: row.devContact,
-        testContact: row.testContact,
-        devLeader: row.devLeader,
-        testLeader: row.testLeader
-      }
+      // 设置当前申请单的设备数据类型
+      this.currentApplicationDataType = row.applicationDataType || 1
 
-      // 解析设备信息
-      if (row.deviceInfoDetails) {
+      // 根据设备数据类型获取字段配置
+      this.currentDataFields = getDataFieldsByType(this.currentApplicationDataType)
+
+      // 设置表单模式为编辑
+      this.formMode = 'edit'
+
+      // 构造表单数据
+      let dataDetails = {}
+      if (row.dataDetails) {
         try {
-          const deviceInfo = typeof row.deviceInfoDetails === 'string'
-            ? JSON.parse(row.deviceInfoDetails)
-            : row.deviceInfoDetails
-
-          this.currentFormData.deviceDetail = {
-            model: deviceInfo.model,
-            modelVersion: deviceInfo.modelVersion,
-            modelType: deviceInfo.modelType,
-            type: deviceInfo.type,
-            hwVersion: deviceInfo.hwVersion,
-            controllerVersion: deviceInfo.controllerVersion,
-            version: deviceInfo.version,
-            adoptResp: deviceInfo.adoptResp
-          }
+          dataDetails = JSON.parse(row.dataDetails)
         } catch (e) {
           console.error('解析设备信息失败:', e)
         }
       }
 
-      // 设置模式为编辑
-      this.formMode = 'edit'
+      // 设置当前表单数据
+      this.currentFormData = {
+        ...row,
+        dataDetails
+      }
 
-      // 显示弹窗
+      // 显示表单弹窗
       this.formDialogVisible = true
     },
 
@@ -557,82 +360,65 @@ export default {
       })
     },
 
-    // 获取申请类型名称
-    getApplicationTypeName(type) {
-      const typeMap = {
-        1: '新增',
-        2: '编辑',
-        3: '上线',
-        4: '下线'
-      }
-      return typeMap[type] || '未知'
+    // 处理固件校验
+    handleFirmwareCheck(row) {
+      this.$confirm('确定要进行固件校验吗？', '固件校验', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        // 这里应该调用固件校验接口
+        this.$message.success('固件校验已启动')
+        this.crud.toQuery() // 刷新列表
+      }).catch(() => {
+        // 用户取消操作
+        this.$message.info('已取消固件校验')
+      })
     },
 
-    // 获取申请数据类型名称
-    getApplicationDataTypeName(type) {
-      const typeMap = {
-        1: 'omada',
-        2: 'vigi',
-        3: 'adblocking'
-      }
-      return typeMap[type] || '未知'
+    // 处理发布同步
+    handlePublishSync(row) {
+      this.$confirm('确定要进行发布同步吗？', '发布同步', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        // 这里应该调用发布同步接口
+        this.$message.success('发布同步已启动')
+        this.crud.toQuery() // 刷新列表
+      }).catch(() => {
+        // 用户取消操作
+        this.$message.info('已取消发布同步')
+      })
     },
 
-    // 获取状态名称（根据后端定义的状态常量）
-    getStatusName(status) {
-      const statusMap = {
-        [this.STATUS_DRAFT]: '草稿',
-        [this.STATUS_SUBMITTED]: '已提交',
-        [this.STATUS_PENDING]: '待审批',
-        [this.STATUS_APPROVED]: '审批通过',
-        [this.STATUS_FIRMWARE_VERIFY]: '固件校验中',
-        [this.STATUS_FIRMWARE_FAILED]: '固件校验失败',
-        [this.STATUS_SYNCING]: '同步中',
-        [this.STATUS_SYNC_FAILED]: '同步失败',
-        [this.STATUS_COMPLETED]: '已完成',
-        [this.STATUS_REJECTED]: '已驳回',
-        [this.STATUS_AUTO_PROCESSING]: '自动处理中',
-        [this.STATUS_AUTO_FAILED]: '自动处理失败',
-        [this.STATUS_MANUAL_TRIGGERED]: '手动触发',
-        [this.STATUS_WITHDRAWN]: '已撤回'
+    // 切换显示全部开关
+    onSwitchChange(value) {
+      // 根据开关状态调整查询条件
+      if (value) {
+        // 显示全部，清除申请人过滤条件
+        delete this.query.applicantUserName
+      } else {
+        // 只显示本人的，设置申请人过滤条件
+        const currentUser = this.$store.getters.user
+        this.query.applicantUserName = currentUser.username
       }
-      return statusMap[status] || '未知状态'
+      this.crud.toQuery()
     },
 
-    // 获取设备类型名称
-    getModelTypeName(type) {
-      const typeMap = {
-        'NORMAL': '普通设备',
-        'PRO': 'Pro设备',
-        'COMBINED': '一体机',
-        'PRO_FREE': 'PRO管理普通设备'
+    // 钩子：首次加载前
+    [CRUD.HOOK.beforeRefresh]() {
+      // 如果不是显示全部，则只查询当前用户的数据
+      if (!this.showAll) {
+        const currentUser = this.$store.getters.user
+        this.query.applicantUserName = currentUser.username
       }
-      return typeMap[type] || type
-    },
-
-    // 获取设备种类名称
-    getTypeName(type) {
-      const typeMap = {
-        'gateway': '网关',
-        'switch': '交换机',
-        'ap': 'AP',
-        'olt': 'OLT',
-        'other': '其他'
-      }
-      return typeMap[type] || type
-    },
-
-    // 根据审核状态返回 el-tag 类型
-    approvalTag(status) {
-      if (!status) return 'info'
-      switch (parseInt(status)) {
-        case this.APPROVAL_STATUS_PENDING: return 'info'
-        case this.APPROVAL_STATUS_APPROVED: return 'success'
-        case this.APPROVAL_STATUS_REJECTED: return 'danger'
-        default: return 'info'
-      }
+      return true
     }
   }
 }
 </script>
 
+<style scoped>
+/* 可以根据需要添加样式 */
+</style>

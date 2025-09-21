@@ -25,7 +25,7 @@
         :dev-leader-users="devLeaderUsers"
         :test-leader-users="testLeaderUsers"
         :data-fields="dataFields"
-        :application-data-type="1"
+        :application-data-type="2"
         @close="handleFormClose"
         @save-success="handleSaveSuccess"
         @submit-success="handleSubmitSuccess"
@@ -35,10 +35,15 @@
       <!-- 表格渲染 -->
       <el-table ref="table" v-loading="crud.loading" :data="crud.data" size="small" style="width: 100%;" @selection-change="crud.selectionChangeHandler">
         <el-table-column type="selection" width="55" />
-        <el-table-column prop="id" label="ID" />
-        <el-table-column prop="model" label="模型类型" />
-        <el-table-column prop="modelVersion" label="模型版本" />
-        <el-table-column v-if="checkPer(['admin','deviceInfo:edit','deviceInfo:del'])" label="操作" width="150px" align="center">
+        <el-table-column prop="model" label="sb模型类型" />
+        <el-table-column prop="modelVersion" label="sb模型版本" />
+        <el-table-column prop="sbname" label="sb设备名称" />
+        <el-table-column prop="type" label="sb设备类型" />
+        <el-table-column prop="manufacturer" label="制造商" />
+        <el-table-column prop="specifications" label="规格参数" />
+        <el-table-column prop="status" label="状态：0-下线，1-上线" />
+        <el-table-column prop="createdAt" label="创建时间" />
+        <el-table-column v-if="checkPer(['admin','gatewayInfo:edit','gatewayInfo:del'])" label="操作" width="150px" align="center">
           <template slot-scope="scope">
             <onOperation
               :data="scope.row"
@@ -56,14 +61,14 @@
 
 
 <script>
-import crudDeviceInfo from '@/api/deviceInfo'
+import crudGatewayInfo from '@/api/gatewayInfo'
 import CRUD, { presenter, header, form, crud } from '@crud/crud'
 import rrOperation from '@crud/RR.operation'
 import crudOperation from '@crud/CRUD.operation'
 import onOperation from '@crud/ON.operation'
 import pagination from '@crud/Pagination'
 import ApplicationFormDialog from '@/views/application/summary/ApplicationFormDialog.vue'
-import { dataType1Fields } from '@/utils/dataFields'
+import { dataType2Fields } from '@/utils/dataFields'
 
 // 更新默认表单值
 const defaultForm = {
@@ -72,7 +77,7 @@ const defaultForm = {
   applicationTitle: null,
   applicationReason: null,
   applicationType: null, // 1:新增, 2:编辑, 3:上线, 4:下线
-  applicationDataType: 1, // 默认为1
+  applicationDataType: 2, // 默认为2
   applicantUserName: '',
   devContact: null,
   testContact: null,
@@ -81,26 +86,26 @@ const defaultForm = {
   dataDetails: {
     model: null,
     modelVersion: null,
-    modelType: null, // NORMAL / PRO / COMBINED / PRO_FREE
-    type: null, // gateway / switch / ap / olt
-    hwVersion: null, // v1.2.3（可选）
-    controllerVersion: null, // 5.15.21.1
-    version: null, // 1.0（设备版本）
-    adoptResp: '{"modelId": "123"}' // 默认示例值
+    sbname: null,
+    type: null,
+    manufacturer: null,
+    specifications: null,
+    status: null,
+    createdAt: null
   }
 }
 
 export default {
-  name: 'DeviceInfo',
+  name: 'GatewayInfo',
   components: { pagination, crudOperation, rrOperation, onOperation, ApplicationFormDialog },
   mixins: [presenter(), header(), form(defaultForm), crud()],
   cruds() {
     return CRUD({
-      title: '测试生成',
-      url: 'api/deviceInfo',
+      title: '网关信息',
+      url: 'api/gatewayInfo',
       idField: 'id',
       sort: 'id,desc',
-      crudMethod: { ...crudDeviceInfo },
+      crudMethod: { ...crudGatewayInfo },
       optShow: { add: true, edit: true, del: false }
     })
   },
@@ -110,11 +115,11 @@ export default {
       formMode: 'add', // 'add' 或 'edit'
       currentFormData: {}, // 当前表单数据
       permission: {
-        add: ['admin', 'deviceInfo:add'],
-        edit: ['admin', 'deviceInfo:edit'],
-        del: ['admin', 'deviceInfo:del'],
-        online: ['admin', 'deviceInfo:online'],
-        offline: ['admin', 'deviceInfo:offline']
+        add: ['admin', 'gatewayInfo:add'],
+        edit: ['admin', 'gatewayInfo:edit'],
+        del: ['admin', 'gatewayInfo:del'],
+        online: ['admin', 'gatewayInfo:online'],
+        offline: ['admin', 'gatewayInfo:offline']
       },
       // 存储各角色的用户列表
       devContactUsers: [],
@@ -123,7 +128,7 @@ export default {
       testLeaderUsers: [],
 
       // 设备信息字段配置
-      dataFields: dataType1Fields,
+      dataFields: dataType2Fields,
 
       queryTypeOptions: [
         { key: 'model', display_name: '模型类型' },
@@ -169,12 +174,12 @@ export default {
         const dataDetails = {
           model: data.model,
           modelVersion: data.modelVersion,
-          modelType: data.modelType || null,
-          type: data.type || null,
-          hwVersion: data.hwVersion || null,
-          controllerVersion: data.controllerVersion || null,
-          version: data.version || null,
-          adoptResp: data.adoptResp || '{"modelId": "123"}'
+          sbname: data.sbname,
+          type: data.type,
+          manufacturer: data.manufacturer,
+          specifications: data.specifications,
+          status: data.status,
+          createdAt: data.createdAt
         }
 
         // 设置当前表单数据
