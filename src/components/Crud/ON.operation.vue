@@ -141,48 +141,36 @@
         </el-card>
 
 
-        <!-- 审核信息区块 -->
+            <!-- 审核信息区块 -->
         <el-card v-if="showApprovalSection" shadow="never" style="margin-bottom: 20px;">
           <div slot="header" style="font-weight: bold; font-size: 16px;">审核信息</div>
           <el-row :gutter="20">
-
-            <!-- 第一行：研发接口人 + 设备接口人 -->
-            <el-col :span="12">
-              <el-form-item label="研发接口人" prop="devContact">
-                <el-select v-model="form.devContact" filterable placeholder="请选择" size="small" style="width: 100%;">
-                  <el-option v-for="user in devContactUsers" :key="user.id" :label="user.username" :value="user.username" />
+            <el-col
+              v-for="(approver, index) in approverConfig"
+              :key="approver.prop"
+              :span="12"
+            >
+              <el-form-item :label="approver.label" :prop="approver.key">
+                <el-select
+                  v-model="form[approver.key]"
+                  filterable
+                  placeholder="请选择"
+                  size="small"
+                  style="width: 100%;"
+                >
+                  <el-option
+                    v-for="user in getUserListByKey(approver.key)"
+                    :key="user.id"
+                    :label="user.username"
+                    :value="user.username"
+                  />
                 </el-select>
               </el-form-item>
             </el-col>
-
-            <el-col :span="12">
-              <el-form-item label="测试接口人" prop="testContact">
-                <el-select v-model="form.testContact" filterable placeholder="请选择" size="small" style="width: 100%;">
-                  <el-option v-for="user in testContactUsers" :key="user.id" :label="user.username" :value="user.username" />
-                </el-select>
-              </el-form-item>
-            </el-col>
-
-            <!-- 第二行：研发组长 + 设备组长 -->
-            <el-col :span="12">
-              <el-form-item label="研发组长" prop="devLeader">
-                <el-select v-model="form.devLeader" filterable placeholder="请选择" size="small" style="width: 100%;">
-                  <el-option v-for="user in devLeaderUsers" :key="user.id" :label="user.username" :value="user.username" />
-                </el-select>
-              </el-form-item>
-            </el-col>
-
-            <el-col :span="12">
-              <el-form-item label="测试组长" prop="testLeader">
-                <el-select v-model="form.testLeader" filterable placeholder="请选择" size="small" style="width: 100%;">
-                  <el-option v-for="user in testLeaderUsers" :key="user.id" :label="user.username" :value="user.username" />
-                </el-select>
-              </el-form-item>
-            </el-col>
-
-
           </el-row>
         </el-card>
+
+
 
       </el-form>
 
@@ -196,11 +184,13 @@
   </div>
 </template>
 
+// ... existing code ...
 <script>
 import CRUD, { crud } from '@crud/crud'
 import { getAll } from '@/api/system/role'
 import { getUsersByRoleId } from '@/api/system/user'
 import { submitApplication, saveDraft } from '@/api/applicationForm'
+import { APPLICATION_TYPE, APPROVER_CONFIG } from '@/utils/dataFields'
 
 
 // 更新默认表单值
@@ -261,7 +251,11 @@ export default {
       type: Number,
       default: 1
     },
-    data: { type: Object, required: true },
+    // 移除 required 属性，使 data prop 成为可选的
+    data: {
+      type: Object,
+      default: () => ({})
+    },
     permission: { type: Object, required: true },
     disabledOnline: { type: Boolean, default: false },
     disabledOffline: { type: Boolean, default: false }
@@ -270,17 +264,46 @@ export default {
     return {
       formVisible: false,
       operationType: '', // 'online' 或 'offline'
-      form: {},
-      rules: {
+      form: { ...defaultForm },
+      submitLoading: false,
+      baseRules: {
         applicationTitle: [{ required: true, message: '申请单标题不能为空', trigger: 'blur' }],
         applicationReason: [{ required: true, message: '申请理由不能为空', trigger: 'blur' }],
-        reason: [{ required: true, message: '请输入理由', trigger: 'blur' }],
-        applicant: [{ required: true, message: '申请人不能为空', trigger: 'blur' }],
-        devContact: [{ required: true, message: '请选择研发接口人', trigger: 'change' }],
-        testContact: [{ required: true, message: '请选择设备接口人', trigger: 'change' }],
-        devLeader: [{ required: true, message: '请选择研发组长', trigger: 'change' }],
-        testLeader: [{ required: true, message: '请选择测试组长', trigger: 'change' }]
+        reason: [{ required: true, message: '请输入理由', trigger: 'blur' }]
+      },
+      // 审批人配置
+      approverConfig: APPROVER_CONFIG
+    }
+  },
+  computed: {
+    isOnlineDisabled() {
+      return this.disabledOnline
+    },
+    dialogTitle() {
+      return this.operationType === 'online' ? '上线确认' : '下线确认'
+    },
+    reasonLabel() {
+      return this.operationType === 'online' ? '上线理由' : '下线理由'
+    },
+    reasonPlaceholder() {
+      return this.operationType === 'online'
+        ? '请说明本次上线的原因和变更内容'
+        : '请说明本次下线的原因'
+    },
+    rules() {
+      const rules = { ...this.baseRules }
+
+      // 如果显示审核信息区域，则添加审核相关的校验规则
+      if (this.showApprovalSection) {
+        // 根据配置动态生成校验规则
+        this.approverConfig.forEach(approver => {
+          rules[approver.key] = [
+            { required: true, message: `请选择${approver.label}`, trigger: 'change' }
+          ]
+        })
       }
+
+      return rules
     }
   },
   watch: {
@@ -298,54 +321,54 @@ export default {
       immediate: true,
       deep: true
     },
-    visible(newVal) {
-      if (newVal) {
-        // 如果没有传入审批人列表，则加载审批人列表
-        if (this.devContactUsers.length === 0 &&
-          this.testContactUsers.length === 0 &&
-          this.devLeaderUsers.length === 0 &&
-          this.testLeaderUsers.length === 0) {
-          this.loadApproverUsersByRoles()
+    formVisible: {
+      handler(newVal) {
+        if (newVal) {
+          // 当表单显示时，检查是否需要加载审批人列表
+          this.checkAndLoadApproverUsers();
         }
       }
-    },
-    // 监听表单变化，防止设备详情被重置
-    'form.dataDetails': {
-      handler(newVal) {
-        // 确保 dataDetails 始终是一个对象
-        if (!newVal) {
-          this.$set(this.form, 'dataDetails', { ...defaultForm.dataDetails })
-        }
-      },
-      deep: true
-    }
-  },
-  computed: {
-    isOnlineDisabled() {
-      return false
-    },
-    dialogTitle() {
-      return this.operationType === 'online' ? '上线确认' : '下线确认'
-    },
-    reasonLabel() {
-      return this.operationType === 'online' ? '上线理由' : '下线理由'
-    },
-    reasonPlaceholder() {
-      return this.operationType === 'online'
-        ? '请说明本次上线的原因和变更内容'
-        : '请说明本次下线的原因'
     }
   },
   methods: {
+    resetForm() {
+      this.form = JSON.parse(JSON.stringify(defaultForm))
+      if (this.$refs.form) {
+        this.$nextTick(() => {
+          this.$refs.form.resetFields()
+        })
+      }
+    },
+
+    // 检查并加载审批人列表
+    checkAndLoadApproverUsers() {
+      // 检查是否有任何审批人列表为空，如果为空则加载
+      if (this.devContactUsers.length === 0 &&
+          this.testContactUsers.length === 0 &&
+          this.devLeaderUsers.length === 0 &&
+          this.testLeaderUsers.length === 0) {
+        this.loadApproverUsersByRoles();
+      }
+    },
+
+    // 根据审批人key获取对应的用户列表
+    getUserListByKey(key) {
+      // 使用配置中的usersProp字段来获取对应的用户列表属性名
+      const approver = this.approverConfig.find(item => item.key === key);
+      if (approver && approver.usersProp) {
+        return this[approver.usersProp] || [];
+      }
+      return [];
+    },
+
     showForm(type) {
       this.operationType = type
       this.formVisible = true
-      this.loadApproverUsersByRoles()
 
       // 清空校验状态
       this.$nextTick(() => {
-        if (this.$refs.formRef) {
-          this.$refs.formRef.clearValidate()
+        if (this.$refs.form) {
+          this.$refs.form.clearValidate()
         }
       })
     },
@@ -357,40 +380,26 @@ export default {
         const rolesRes = await getAll()
         const roles = rolesRes.content || rolesRes
 
-        // 找到对应的角色ID
-        const devContactRole = roles.find(role => role.name.includes('研发接口人'))
-        const testContactRole = roles.find(role => role.name.includes('测试接口人'))
-        const devLeaderRole = roles.find(role => role.name.includes('研发组长'))
-        const testLeaderRole = roles.find(role => role.name.includes('测试组长'))
+        // 存储获取到的用户列表
+        const userLists = {}
 
-        // 根据角色ID获取对应的用户（如果后端支持按角色查询用户）
-        if (devContactRole) {
-          const users = await getUsersByRoleId(devContactRole.id)
-          this.devContactUsers = users.content || users
+        // 根据配置获取对应的用户
+        for (const approver of this.approverConfig) {
+          const role = roles.find(r => r.name.includes(approver.roleKeyword))
+          if (role) {
+            const users = await getUsersByRoleId(role.id)
+            // 使用配置中的usersProp字段作为键名
+            userLists[approver.usersProp] = users.content || users
+          }
         }
 
-        if (testContactRole) {
-          const users = await getUsersByRoleId(testContactRole.id)
-          this.testContactUsers = users.content || users
-        }
-
-        if (devLeaderRole) {
-          const users = await getUsersByRoleId(devLeaderRole.id)
-          this.devLeaderUsers = users.content || users
-        }
-
-        if (testLeaderRole) {
-          const users = await getUsersByRoleId(testLeaderRole.id)
-          this.testLeaderUsers = users.content || users
-        }
+        // 更新本地数据
+        Object.keys(userLists).forEach(key => {
+          this[key] = userLists[key];
+        });
 
         // 触发事件，通知父组件更新审批人列表
-        this.$emit('update-approver-users', {
-          devContactUsers: this.devContactUsers,
-          testContactUsers: this.testContactUsers,
-          devLeaderUsers: this.devLeaderUsers,
-          testLeaderUsers: this.testLeaderUsers
-        })
+        this.$emit('update-approver-users', userLists)
       } catch (error) {
         console.error('获取审批人列表失败:', error)
         this.$message.error('获取审批人列表失败')
@@ -398,8 +407,8 @@ export default {
     },
 
     handleClose() {
-      if (this.$refs.formRef) {
-        this.$refs.formRef.resetFields()
+      if (this.$refs.form) {
+        this.$refs.form.resetFields()
       }
       this.formVisible = false
     },
@@ -435,15 +444,16 @@ export default {
     getApplicationType() {
       // 根据操作状态确定申请类型
       if (this.operationType === 'online') {
-        return 3 // 上线
+        return APPLICATION_TYPE.ONLINE // 上线
       } else if (this.operationType === 'offline') {
-        return 4 // 下线
+        return APPLICATION_TYPE.OFFLINE // 下线
       }
       return null
     },
   }
 }
 </script>
+
 
 <style scoped>/* 容器级控制：使用 flex 强制对齐 */
 .action-buttons {

@@ -79,6 +79,16 @@ import rrOperation from '@crud/RR.operation'
 import crudOperation from '@crud/CRUD.operation'
 import pagination from '@crud/Pagination'
 import ApplicationDetailView from '@/views/application/summary/ApplicationDetailView.vue'
+import {
+  getApplicationTypeName,
+  getApplicationDataTypeName,
+  getApplicationStatusName,
+  getApprovalStatusName,
+  getApproverRoleName,
+  getModelTypeName,
+  getDeviceTypeName,
+  APPROVAL_STATUS
+} from '@/utils/dataFields'
 
 const defaultForm = {
 }
@@ -110,28 +120,6 @@ export default {
       parsedDeviceInfo: {}, // 存储解析后的设备信息
       approvalHistory: [], // 存储解析后的审批历史记录
       groupedApprovalHistory: [], // 按轮次分组的审批历史记录
-
-      // 申请单状态常量定义
-      STATUS_DRAFT: -1,        // 草稿
-      STATUS_SUBMITTED: 0,     // 已提交
-      STATUS_PENDING: 1,       // 待审批
-      STATUS_APPROVED: 2,      // 审批通过
-      STATUS_FIRMWARE_VERIFY: 3, // 固件校验中
-      STATUS_FIRMWARE_FAILED: 4, // 固件校验失败
-      STATUS_SYNCING: 5,       // 同步中
-      STATUS_SYNC_FAILED: 6,   // 同步失败
-      STATUS_COMPLETED: 7,     // 已完成
-      STATUS_REJECTED: 8,      // 已驳回
-      STATUS_AUTO_PROCESSING: 9, // 自动处理中
-      STATUS_AUTO_FAILED: 10,   // 自动处理失败
-      STATUS_MANUAL_TRIGGERED: 11, // 手动触发
-      STATUS_WITHDRAWN: 12,    // 已撤回
-
-      // 审批状态常量
-      APPROVAL_STATUS_PENDING: 0,
-      APPROVAL_STATUS_APPROVED: 1,
-      APPROVAL_STATUS_REJECTED: 2,
-
 
       permission: {
         add: ['admin', 'applicationForm:add'],
@@ -231,22 +219,11 @@ export default {
     },
     // 获取审批角色名称
     getApproverRoleName(role) {
-      const roleMap = {
-        'test_contact': '测试接口人',
-        'dev_contact': '研发接口人',
-        'test_leader': '测试组长',
-        'dev_leader': '研发组长'
-      }
-      return roleMap[role] || role
+      return getApproverRoleName(role)
     },
     // 获取审批状态名称
     getApprovalStatusName(status) {
-      switch (parseInt(status)) {
-        case this.APPROVAL_STATUS_PENDING: return '待审批'
-        case this.APPROVAL_STATUS_APPROVED: return '通过'
-        case this.APPROVAL_STATUS_REJECTED: return '驳回'
-        default: return '未知'
-      }
+      return getApprovalStatusName(status)
     },
 
     // 格式化时间戳
@@ -258,77 +235,42 @@ export default {
 
     // 获取申请类型名称
     getApplicationTypeName(type) {
-      const typeMap = {
-        1: '新增',
-        2: '编辑',
-        3: '上线',
-        4: '下线'
-      }
-      return typeMap[type] || '未知'
+      return getApplicationTypeName(type)
     },
 
     // 获取申请数据类型名称
     getApplicationDataTypeName(type) {
-      const typeMap = {
-        1: 'omada',
-        2: 'vigi',
-        3: 'adblocking'
-      }
-      return typeMap[type] || '未知'
+      return getApplicationDataTypeName(type)
     },
 
     // 获取状态名称（根据后端定义的状态常量）
     getStatusName(status) {
-      const statusMap = {
-        [this.STATUS_DRAFT]: '草稿',
-        [this.STATUS_SUBMITTED]: '已提交',
-        [this.STATUS_PENDING]: '待审批',
-        [this.STATUS_APPROVED]: '审批通过',
-        [this.STATUS_FIRMWARE_VERIFY]: '固件校验中',
-        [this.STATUS_FIRMWARE_FAILED]: '固件校验失败',
-        [this.STATUS_SYNCING]: '同步中',
-        [this.STATUS_SYNC_FAILED]: '同步失败',
-        [this.STATUS_COMPLETED]: '已完成',
-        [this.STATUS_REJECTED]: '已驳回',
-        [this.STATUS_AUTO_PROCESSING]: '自动处理中',
-        [this.STATUS_AUTO_FAILED]: '自动处理失败',
-        [this.STATUS_MANUAL_TRIGGERED]: '手动触发',
-        [this.STATUS_WITHDRAWN]: '已撤回'
-      }
-      return statusMap[status] || '未知状态'
+      // 确保状态值为数字类型
+      const statusValue = parseInt(status, 10)
+      return getApplicationStatusName(statusValue)
     },
 
     // 获取设备类型名称
     getModelTypeName(type) {
-      const typeMap = {
-        'NORMAL': '普通设备',
-        'PRO': 'Pro设备',
-        'COMBINED': '一体机',
-        'PRO_FREE': 'PRO管理普通设备'
-      }
-      return typeMap[type] || type
+      return getModelTypeName(type)
     },
 
     // 获取设备种类名称
     getTypeName(type) {
-      const typeMap = {
-        'gateway': '网关',
-        'switch': '交换机',
-        'ap': 'AP',
-        'olt': 'OLT',
-        'other': '其他'
-      }
-      return typeMap[type] || type
+      return getDeviceTypeName(type)
     },
 
     // 根据审核状态返回 el-tag 类型
     approvalTag(status) {
       if (!status) return 'info'
       switch (parseInt(status)) {
-        case this.APPROVAL_STATUS_PENDING: return 'info'
-        case this.APPROVAL_STATUS_APPROVED: return 'success'
-        case this.APPROVAL_STATUS_REJECTED: return 'danger'
-        default: return 'info'
+        case APPROVAL_STATUS.APPROVED:
+          return 'success'
+        case APPROVAL_STATUS.REJECTED:
+          return 'danger'
+        case APPROVAL_STATUS.PENDING:
+        default:
+          return 'info'
       }
     },
     // 钩子：在获取数据前执行
@@ -342,4 +284,3 @@ export default {
   }
 }
 </script>
-

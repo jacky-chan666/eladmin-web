@@ -65,8 +65,7 @@ import crudOperation from '@crud/CRUD.operation'
 import onOperation from '@crud/ON.operation'
 import pagination from '@crud/Pagination'
 import ApplicationFormDialog from '@/views/application/summary/ApplicationFormDialog.vue'
-import { dataType2Fields } from '@/utils/dataFields'
-
+import { getDataFieldsByType, APPLICATION_DATA_TYPE, APPLICATION_TYPE } from '@/utils/dataFields'
 
 // 更新默认表单值
 const defaultForm = {
@@ -75,23 +74,21 @@ const defaultForm = {
   applicationTitle: null,
   applicationReason: null,
   applicationType: null, // 1:新增, 2:编辑, 3:上线, 4:下线
-  applicationDataType: 2, // 默认为2
+  applicationDataType: APPLICATION_DATA_TYPE.GATEWAY, // 1：device 2：gateway
   applicantUserName: '',
   devContact: null,
   testContact: null,
   devLeader: null,
   testLeader: null,
-  dataDetails: {
-    model: null,
-    modelVersion: null,
-    sbname: null,
-    type: null,
-    manufacturer: null,
-    specifications: null,
-    status: null,
-    createdAt: null
-  }
+  dataDetails: {}
 }
+// 根据字段配置动态生成默认dataDetails对象
+const dataFieldsConfig = getDataFieldsByType(defaultForm.applicationDataType)
+dataFieldsConfig.forEach(field => {
+  if (field.prop) {
+    defaultForm.dataDetails[field.prop] = null
+  }
+})
 
 export default {
   name: 'GatewayInfo',
@@ -126,7 +123,7 @@ export default {
       testLeaderUsers: [],
 
       // 设备信息字段配置
-      dataFields: dataType2Fields,
+      dataFields: dataFieldsConfig,
 
       queryTypeOptions: [
         { key: 'model', display_name: '模型类型' },
@@ -134,7 +131,6 @@ export default {
       ]
     }
   },
-
   methods: {
     handleSaveSuccess() {
       this.formDialogVisible = false
@@ -170,21 +166,20 @@ export default {
       // 如果是编辑模式，设置当前表单数据
       if (this.formMode === 'edit' && data) {
         // 将扁平的设备数据结构转换为嵌套结构
-        const dataDetails = {
-          model: data.model,
-          modelVersion: data.modelVersion,
-          sbname: data.sbname,
-          type: data.type,
-          manufacturer: data.manufacturer,
-          specifications: data.specifications,
-          status: data.status,
-          createdAt: data.createdAt
-        }
+        const dataDetails = {}
+
+        // 根据字段配置动态构建dataDetails对象
+        dataFieldsConfig.forEach(field => {
+          if (field.prop) {
+            dataDetails[field.prop] = data[field.prop] || null
+          }
+        })
 
         // 设置当前表单数据
         this.currentFormData = {
           ...data,
           applicationDataId: data.id,
+          applicationType: crud.status.add === 1 ? APPLICATION_TYPE.ADD : APPLICATION_TYPE.EDIT, // 新增为1，编辑为2
           id: null,
           dataDetails
         }
@@ -197,14 +192,12 @@ export default {
       this.formDialogVisible = true
 
       return false // 阻止默认的表单弹出
-    },
-
-    // 钩子：刷新前
-    [CRUD.HOOK.beforeRefresh]() {
-      return true
     }
+
   }
 }
+
+
 </script>
 
 <style scoped>

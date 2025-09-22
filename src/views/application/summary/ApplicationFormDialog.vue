@@ -110,42 +110,29 @@
       <el-card v-if="showApprovalSection" shadow="never" style="margin-bottom: 20px;">
         <div slot="header" style="font-weight: bold; font-size: 16px;">审核信息</div>
         <el-row :gutter="20">
-
-          <!-- 第一行：研发接口人 + 设备接口人 -->
-          <el-col :span="12">
-            <el-form-item label="研发接口人" prop="devContact">
-              <el-select v-model="form.devContact" filterable placeholder="请选择" size="small" style="width: 100%;">
-                <el-option v-for="user in devContactUsers" :key="user.id" :label="user.username" :value="user.username" />
+          <!-- 动态生成审核人字段 -->
+          <el-col
+            v-for="(approver, index) in approverConfig"
+            :key="approver.prop"
+            :span="12"
+          >
+            <el-form-item :label="approver.label" :prop="approver.key">
+              <el-select
+                v-model="form[approver.key]"
+                filterable
+                placeholder="请选择"
+                size="small"
+                style="width: 100%;"
+              >
+                <el-option
+                  v-for="user in getUserListByKey(approver.key)"
+                  :key="user.id"
+                  :label="user.username"
+                  :value="user.username"
+                />
               </el-select>
             </el-form-item>
           </el-col>
-
-          <el-col :span="12">
-            <el-form-item label="测试接口人" prop="testContact">
-              <el-select v-model="form.testContact" filterable placeholder="请选择" size="small" style="width: 100%;">
-                <el-option v-for="user in testContactUsers" :key="user.id" :label="user.username" :value="user.username" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-
-          <!-- 第二行：研发组长 + 设备组长 -->
-          <el-col :span="12">
-            <el-form-item label="研发组长" prop="devLeader">
-              <el-select v-model="form.devLeader" filterable placeholder="请选择" size="small" style="width: 100%;">
-                <el-option v-for="user in devLeaderUsers" :key="user.id" :label="user.username" :value="user.username" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-
-          <el-col :span="12">
-            <el-form-item label="测试组长" prop="testLeader">
-              <el-select v-model="form.testLeader" filterable placeholder="请选择" size="small" style="width: 100%;">
-                <el-option v-for="user in testLeaderUsers" :key="user.id" :label="user.username" :value="user.username" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-
-
         </el-row>
       </el-card>
 
@@ -164,7 +151,7 @@
 import { getAll } from '@/api/system/role'
 import { getUsersByRoleId } from '@/api/system/user'
 import { submitApplication, saveDraft } from '@/api/applicationForm'
-import { getDataRulesByType } from '@/utils/dataFields'
+import { getDataRulesByType, APPROVER_CONFIG } from '@/utils/dataFields'
 
 // 更新默认表单值
 const defaultForm = {
@@ -234,6 +221,8 @@ export default {
       saveLoading: false,
       submitLoading: false,
       form: { ...defaultForm },
+      // 审批人配置
+      approverConfig: APPROVER_CONFIG,
 
       baseRules: {
         applicationTitle: [
@@ -262,18 +251,12 @@ export default {
 
       // 如果显示审核信息区域，则添加审核相关的校验规则
       if (this.showApprovalSection) {
-        rules.devContact = [
-          { required: true, message: '请选择研发接口人', trigger: 'change' }
-        ]
-        rules.testContact = [
-          { required: true, message: '请选择设备接口人', trigger: 'change' }
-        ]
-        rules.devLeader = [
-          { required: true, message: '请选择研发组长', trigger: 'change' }
-        ]
-        rules.testLeader = [
-          { required: true, message: '请选择设备组长', trigger: 'change' }
-        ]
+        // 根据配置动态生成校验规则
+        this.approverConfig.forEach(approver => {
+          rules[approver.key] = [
+            { required: true, message: `请选择${approver.label}`, trigger: 'change' }
+          ]
+        })
       }
 
       // 根据设备数据类型获取设备字段的校验规则
@@ -328,6 +311,16 @@ export default {
     }
   },
   methods: {
+    // 根据审批人key获取对应的用户列表
+    getUserListByKey(key) {
+      // 使用配置中的usersProp字段来获取对应的用户列表属性名
+      const approver = this.approverConfig.find(item => item.key === key);
+      if (approver && approver.usersProp) {
+        return this[approver.usersProp] || [];
+      }
+      return [];
+    },
+
     handleClose() {
       this.$emit('close')
       this.resetForm()
@@ -434,40 +427,26 @@ export default {
         const rolesRes = await getAll()
         const roles = rolesRes.content || rolesRes
 
-        // 找到对应的角色ID
-        const devContactRole = roles.find(role => role.name.includes('研发接口人'))
-        const testContactRole = roles.find(role => role.name.includes('测试接口人'))
-        const devLeaderRole = roles.find(role => role.name.includes('研发组长'))
-        const testLeaderRole = roles.find(role => role.name.includes('测试组长'))
+        // 存储获取到的用户列表
+        const userLists = {}
 
-        // 根据角色ID获取对应的用户（如果后端支持按角色查询用户）
-        if (devContactRole) {
-          const users = await getUsersByRoleId(devContactRole.id)
-          this.devContactUsers = users.content || users
+        // 根据配置获取对应的用户
+        for (const approver of this.approverConfig) {
+          const role = roles.find(r => r.name.includes(approver.roleKeyword))
+          if (role) {
+            const users = await getUsersByRoleId(role.id)
+            // 使用配置中的usersProp字段作为键名
+            userLists[approver.usersProp] = users.content || users
+          }
         }
 
-        if (testContactRole) {
-          const users = await getUsersByRoleId(testContactRole.id)
-          this.testContactUsers = users.content || users
-        }
-
-        if (devLeaderRole) {
-          const users = await getUsersByRoleId(devLeaderRole.id)
-          this.devLeaderUsers = users.content || users
-        }
-
-        if (testLeaderRole) {
-          const users = await getUsersByRoleId(testLeaderRole.id)
-          this.testLeaderUsers = users.content || users
-        }
+        // 更新本地数据
+        Object.keys(userLists).forEach(key => {
+          this[key] = userLists[key];
+        });
 
         // 触发事件，通知父组件更新审批人列表
-        this.$emit('update-approver-users', {
-          devContactUsers: this.devContactUsers,
-          testContactUsers: this.testContactUsers,
-          devLeaderUsers: this.devLeaderUsers,
-          testLeaderUsers: this.testLeaderUsers
-        })
+        this.$emit('update-approver-users', userLists)
       } catch (error) {
         console.error('获取审批人列表失败:', error)
         this.$message.error('获取审批人列表失败')
@@ -480,4 +459,3 @@ export default {
 <style scoped>
 /* 可以根据需要添加样式 */
 </style>
-
