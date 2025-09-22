@@ -28,15 +28,15 @@
         <div v-if="loadingDeviceInfo">正在加载设备信息...</div>
         <el-descriptions v-else :column="1" border size="medium">
           <el-descriptions-item
-            v-for="(field, index) in deviceFields"
+            v-for="(field, index) in dataFields"
             :key="index"
             :label="field.label"
           >
             <div v-if="field.prop === 'adoptResp'" style="white-space: pre-wrap;">
-              {{ getDeviceFieldValue(field.prop) || '暂无' }}
+              {{ getDataFieldValue(field.prop) || '暂无' }}
             </div>
             <div v-else>
-              {{ getDeviceFieldValue(field.prop) || '暂无' }}
+              {{ getDataFieldValue(field.prop) || '暂无' }}
             </div>
           </el-descriptions-item>
         </el-descriptions>
@@ -143,7 +143,7 @@ export default {
   data() {
     return {
       detail: {},
-      parsedDeviceInfo: {},
+      parsedData: {},
       approvalHistory: [],
       groupedApprovalHistory: [],
       loadingDeviceInfo: false,
@@ -178,7 +178,7 @@ export default {
         this.$emit('update:visible', val)
       }
     },
-    deviceFields() {
+    dataFields() {
       if (this.detail.applicationDataType) {
         return getDataFieldsByType(this.detail.applicationDataType)
       }
@@ -190,7 +190,7 @@ export default {
       handler(newVal) {
         if (newVal && Object.keys(newVal).length > 0) {
           this.detail = { ...newVal }
-          this.parseDeviceInfo()
+          this.parseData()
           this.parseApprovalHistory()
         }
       },
@@ -200,13 +200,13 @@ export default {
   },
   methods: {
     // 获取设备字段值
-    getDeviceFieldValue(prop) {
+    getDataFieldValue(prop) {
       // 处理嵌套属性，如 dataDetails.model
       if (prop.startsWith('dataDetails.')) {
         const key = prop.split('.')[1]
-        return this.parsedDeviceInfo[key]
+        return this.parsedData[key]
       }
-      return this.parsedDeviceInfo[prop]
+      return this.parsedData[prop]
     },
 
     // 获取申请单类型名称
@@ -320,17 +320,17 @@ export default {
     },
 
     // 解析设备信息
-    parseDeviceInfo() {
+    parseData() {
       this.loadingDeviceInfo = true
-      if (this.detail.deviceInfoDetails) {
+      if (this.detail.dataDetails) {
         try {
-          this.parsedDeviceInfo = JSON.parse(this.detail.deviceInfoDetails)
+          this.parsedData = JSON.parse(this.detail.dataDetails)
         } catch (e) {
           console.error('解析设备信息失败:', e)
-          this.parsedDeviceInfo = {}
+          this.parsedData = {}
         }
       } else {
-        this.parsedDeviceInfo = {}
+        this.parsedData = {}
       }
       this.loadingDeviceInfo = false
     },
@@ -386,3 +386,4 @@ export default {
 <style scoped>
 /* 可以根据需要添加样式 */
 </style>
+

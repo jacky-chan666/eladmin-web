@@ -35,13 +35,16 @@
       <!-- 表格渲染 -->
       <el-table ref="table" v-loading="crud.loading" :data="crud.data" size="small" style="width: 100%;" @selection-change="crud.selectionChangeHandler">
         <el-table-column type="selection" width="55" />
-        <el-table-column prop="id" label="ID" />
-        <el-table-column prop="model" label="模型类型" />
-        <el-table-column prop="modelVersion" label="模型版本" />
+        <el-table-column
+          v-for="(field, index) in dataFields"
+          :key="index"
+          :prop="field.prop"
+          :label="field.label" />
         <el-table-column v-if="checkPer(['admin','deviceInfo:edit','deviceInfo:del'])" label="操作" width="150px" align="center">
           <template slot-scope="scope">
             <onOperation
-              :data="scope.row"
+              :data-fields="dataFields"
+              :form-data="getRowFormData(scope.row)"
               :permission="permission"
             />
           </template>
@@ -72,8 +75,9 @@ const defaultForm = {
   applicationTitle: null,
   applicationReason: null,
   applicationType: null, // 1:新增, 2:编辑, 3:上线, 4:下线
-  applicationDataType: 1, // 默认为1
+  applicationDataType: 1, // 1：device 2：gateway
   applicantUserName: '',
+  applicationDataId: null,
   devContact: null,
   testContact: null,
   devLeader: null,
@@ -180,6 +184,9 @@ export default {
         // 设置当前表单数据
         this.currentFormData = {
           ...data,
+          applicationDataId: data.id,
+          applicationType: crud.status.add === 1 ? 1 : 2, // 新增为1，编辑为2
+          id: null,
           dataDetails
         }
       } else {
@@ -192,11 +199,27 @@ export default {
 
       return false // 阻止默认的表单弹出
     },
-
-    // 钩子：刷新前
-    [CRUD.HOOK.beforeRefresh]() {
-      return true
+    getRowFormData(row) {
+      const dataDetails = {
+        model: row.model,
+        modelVersion: row.modelVersion,
+        modelType: row.modelType || null,
+        type: row.type || null,
+        hwVersion: row.hwVersion || null,
+        controllerVersion: row.controllerVersion || null,
+        version: row.version || null,
+        adoptResp: row.adoptResp || '{"modelId": "123"}'
+      }
+      const currentFormData = {
+        applicationDataId: row.id,
+        applicantUserName: this.$store.getters.user.username,
+        applicationDataType: 1,
+        id: null,
+        dataDetails
+      }
+      return currentFormData
     }
+
   }
 }
 </script>
@@ -204,3 +227,4 @@ export default {
 <style scoped>
 /* 可以根据需要添加样式 */
 </style>
+

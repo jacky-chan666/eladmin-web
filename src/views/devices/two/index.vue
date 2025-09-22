@@ -35,18 +35,15 @@
       <!-- 表格渲染 -->
       <el-table ref="table" v-loading="crud.loading" :data="crud.data" size="small" style="width: 100%;" @selection-change="crud.selectionChangeHandler">
         <el-table-column type="selection" width="55" />
-        <el-table-column prop="model" label="sb模型类型" />
-        <el-table-column prop="modelVersion" label="sb模型版本" />
-        <el-table-column prop="sbname" label="sb设备名称" />
-        <el-table-column prop="type" label="sb设备类型" />
-        <el-table-column prop="manufacturer" label="制造商" />
-        <el-table-column prop="specifications" label="规格参数" />
-        <el-table-column prop="status" label="状态：0-下线，1-上线" />
-        <el-table-column prop="createdAt" label="创建时间" />
+        <el-table-column
+          v-for="(field, index) in dataFields"
+          :key="index"
+          :prop="field.prop"
+          :label="field.label" />
         <el-table-column v-if="checkPer(['admin','gatewayInfo:edit','gatewayInfo:del'])" label="操作" width="150px" align="center">
           <template slot-scope="scope">
             <onOperation
-              :data="scope.row"
+              :form-data="scope.row"
               :permission="permission"
             />
           </template>
@@ -69,6 +66,7 @@ import onOperation from '@crud/ON.operation'
 import pagination from '@crud/Pagination'
 import ApplicationFormDialog from '@/views/application/summary/ApplicationFormDialog.vue'
 import { dataType2Fields } from '@/utils/dataFields'
+
 
 // 更新默认表单值
 const defaultForm = {
@@ -136,6 +134,7 @@ export default {
       ]
     }
   },
+
   methods: {
     handleSaveSuccess() {
       this.formDialogVisible = false
@@ -185,6 +184,8 @@ export default {
         // 设置当前表单数据
         this.currentFormData = {
           ...data,
+          applicationDataId: data.id,
+          id: null,
           dataDetails
         }
       } else {

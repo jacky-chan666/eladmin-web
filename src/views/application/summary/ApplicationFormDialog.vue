@@ -14,9 +14,9 @@
       <el-card shadow="never" style="margin-bottom: 20px;">
         <div slot="header" style="font-weight: bold; font-size: 16px;">申请信息</div>
         <el-row :gutter="20">
-          <!-- 审定单编号 -->
+          <!-- 申请单编号 -->
           <el-col :span="12">
-            <el-form-item label="审定单编号">
+            <el-form-item label="申请单编号">
               <el-input v-model="form.uuid" disabled style="width: 100%;" />
             </el-form-item>
           </el-col>
@@ -61,7 +61,7 @@
               :key="index"
               :span="field.span || 12"
             >
-              <el-form-item :label="field.label" :prop="'dataDetails.' + field.prop">
+              <el-form-item v-if="field.required" :label="field.label" :prop="'dataDetails.' + field.prop">
                 <!-- 输入框 -->
                 <el-input
                   v-if="field.type === 'input' || !field.type"
@@ -164,7 +164,7 @@
 import { getAll } from '@/api/system/role'
 import { getUsersByRoleId } from '@/api/system/user'
 import { submitApplication, saveDraft } from '@/api/applicationForm'
-import { getDataFieldsByType, getDataRulesByType } from '@/utils/dataFields'
+import { getDataRulesByType } from '@/utils/dataFields'
 
 // 更新默认表单值
 const defaultForm = {
@@ -173,7 +173,8 @@ const defaultForm = {
   applicationTitle: null,
   applicationReason: null,
   applicationType: null, // 1:新增, 2:编辑, 3:上线, 4:下线
-  applicationDataType: 1, // 默认为1
+  applicationDataType: null, // 区分不同的数据类型
+  applicationDataId: null, // 数据表的主键ID
   applicantUserName: '',
   devContact: null,
   testContact: null,
@@ -308,9 +309,9 @@ export default {
       if (newVal) {
         // 如果没有传入审批人列表，则加载审批人列表
         if (this.devContactUsers.length === 0 &&
-            this.testContactUsers.length === 0 &&
-            this.devLeaderUsers.length === 0 &&
-            this.testLeaderUsers.length === 0) {
+          this.testContactUsers.length === 0 &&
+          this.devLeaderUsers.length === 0 &&
+          this.testLeaderUsers.length === 0) {
           this.loadApproverUsersByRoles()
         }
       }
@@ -479,3 +480,4 @@ export default {
 <style scoped>
 /* 可以根据需要添加样式 */
 </style>
+

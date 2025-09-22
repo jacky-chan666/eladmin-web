@@ -146,7 +146,7 @@ export default {
       rejectReason: '',
       submitLoading: false,
       loadingDeviceInfo: false,
-      parsedDeviceInfo: {}, // 存储解析后的设备信息
+      parsedData: {}, // 存储解析后的设备信息
       approvalHistory: [], // 存储解析后的审批历史记录
       groupedApprovalHistory: [], // 按轮次分组的审批历史记录
 
@@ -200,20 +200,20 @@ export default {
     // 处理点击"查看"
     handleView(row) {
       this.detail = { ...row } // 复制当前行数据
-      this.parsedDeviceInfo = {}
+      this.parsedData = {}
       this.loadingDeviceInfo = true
       this.detailVisible = true
 
       // 解析设备信息
       if (row.dataDetails) {
         try {
-          this.parsedDeviceInfo = typeof row.dataDetails === 'string'
+          this.parsedData = typeof row.dataDetails === 'string'
             ? JSON.parse(row.dataDetails)
             : row.dataDetails
         } catch (e) {
           console.error('设备信息Details字段不是有效的JSON字符串:', row.dataDetails)
           console.error('解析设备信息失败:', e)
-          this.parsedDeviceInfo = {}
+          this.parsedData = {}
         }
       }
 
@@ -443,4 +443,5 @@ export default {
   }
 }
 </script>
+
 

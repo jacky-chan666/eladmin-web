@@ -176,6 +176,18 @@
               />
             </template>
           </el-table-column>
+          <el-table-column
+            :show-overflow-tooltip="true"
+            prop="roles"
+            label="角色"
+            width="180">
+            <template slot-scope="scope">
+              <span v-for="(role, index) in scope.row.roles" :key="role.id">
+                {{ role.name }}<span v-if="index < scope.row.roles.length - 1">，</span>
+              </span>
+              <span v-if="!scope.row.roles || scope.row.roles.length === 0" style="color: #999;">无角色</span>
+            </template>
+          </el-table-column>
           <el-table-column :show-overflow-tooltip="true" prop="createTime" width="135" label="创建日期" />
           <el-table-column
             v-if="checkPer(['admin','user:edit','user:del'])"
@@ -517,8 +529,9 @@ export default {
 </script>
 
 <style rel="stylesheet/scss" lang="scss" scoped>
-  ::v-deep .vue-treeselect__control,::v-deep .vue-treeselect__placeholder,::v-deep .vue-treeselect__single-value {
-    height: 30px;
-    line-height: 30px;
-  }
+::v-deep .vue-treeselect__control,::v-deep .vue-treeselect__placeholder,::v-deep .vue-treeselect__single-value {
+  height: 30px;
+  line-height: 30px;
+}
 </style>
+
