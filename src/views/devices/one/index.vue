@@ -52,7 +52,6 @@
   </div>
 </template>
 
-
 <script>
 import crudDeviceInfo from '@/api/deviceInfo'
 import CRUD, { presenter, header, form, crud } from '@crud/crud'
@@ -63,6 +62,8 @@ import pagination from '@crud/Pagination'
 import ApplicationFormDialog from '@/views/application/summary/ApplicationFormDialog.vue'
 import { getDataFieldsByType, APPLICATION_DATA_TYPE, APPLICATION_TYPE, APPROVER_CONFIG } from '@/utils/dataFields'
 
+// TODO 设备列表页面增加一个页面详情的展示但
+// TODO 图片上传的设计
 // ... existing code ...
 // 更新默认表单值
 const defaultForm = {
