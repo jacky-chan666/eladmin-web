@@ -25,7 +25,7 @@
 
       <!-- Tab 2: 设备信息 -->
       <el-tab-pane label="设备信息">
-        <div v-if="loadingDeviceInfo">正在加载设备信息...</div>
+        <div v-if="loadingDataDetails">正在加载设备信息...</div>
         <el-descriptions v-else :column="1" border size="medium">
           <el-descriptions-item
             v-for="(field, index) in dataFields"
@@ -135,7 +135,7 @@ export default {
       parsedData: {},
       approvalHistory: [],
       groupedApprovalHistory: [],
-      loadingDeviceInfo: false,
+      loadingDataDetails: false,
       // 审批人配置
       approverConfig: APPROVER_CONFIG
     }
@@ -255,7 +255,7 @@ export default {
 
     // 解析设备信息
     parseData() {
-      this.loadingDeviceInfo = true
+      this.loadingDataDetails = true
       if (this.detail.dataDetails) {
         try {
           this.parsedData = JSON.parse(this.detail.dataDetails)
@@ -266,7 +266,7 @@ export default {
       } else {
         this.parsedData = {}
       }
-      this.loadingDeviceInfo = false
+      this.loadingDataDetails = false
     },
 
     // 解析审批历史记录

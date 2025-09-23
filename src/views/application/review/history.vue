@@ -18,13 +18,6 @@
 
       <crudOperation :permission="permission" />
 
-      <!-- 显示全部开关 -->
-      <el-switch
-        v-model="showAll"
-        active-text="显示全部"
-        style="margin-right: 15px;"
-        @change="onSwitchChange"
-      />
 
       <!-- 表格渲染 -->
       <el-table ref="table" v-loading="crud.loading" :data="crud.data" size="small" style="width: 100%;" @selection-change="crud.selectionChangeHandler">
@@ -83,9 +76,6 @@ import {
   getApplicationTypeName,
   getApplicationDataTypeName,
   getApplicationStatusName,
-  getApprovalStatusName,
-  getApproverRoleName,
-  getModelTypeName,
   getDeviceTypeName,
   APPROVAL_STATUS
 } from '@/utils/dataFields'
@@ -111,13 +101,13 @@ export default {
     return {
       // 新增：详情相关状态
       detail: {},
-      deviceInfo: {},
+      dataDetails: {},
       detailVisible: false,
       rejectDialogVisible: false,
       rejectReason: '',
       submitLoading: false,
-      loadingDeviceInfo: false,
-      parsedDeviceInfo: {}, // 存储解析后的设备信息
+      loadingDataDetails: false,
+      parsedDataDetails: {}, // 存储解析后的设备信息
       approvalHistory: [], // 存储解析后的审批历史记录
       groupedApprovalHistory: [], // 按轮次分组的审批历史记录
 
@@ -147,35 +137,30 @@ export default {
   },
   methods: {
 
-    // 开关变化处理
-    onSwitchChange() {
-      this.updateQuery()
-    },
-
     // 处理点击"查看"
     handleView(row) {
       this.detail = { ...row } // 复制当前行数据
-      this.parsedDeviceInfo = {}
-      this.loadingDeviceInfo = true
+      this.parsedDataDetails = {}
+      this.loadingDataDetails = true
       this.detailVisible = true
 
       // 解析设备信息
       if (row.dataDetails) {
         try {
-          this.parsedDeviceInfo = typeof row.dataDetails === 'string'
+          this.parsedDataDetails = typeof row.dataDetails === 'string'
             ? JSON.parse(row.dataDetails)
             : row.dataDetails
         } catch (e) {
           console.error('设备信息Details字段不是有效的JSON字符串:', row.dataDetails)
           console.error('解析设备信息失败:', e)
-          this.parsedDeviceInfo = {}
+          this.parsedDataDetails = {}
         }
       }
 
       // 解析审批历史记录
       this.parseApprovalHistory(row.approvalHistory)
 
-      this.loadingDeviceInfo = false
+      this.loadingDataDetails = false
     },
 
     // 解析审批历史记录
@@ -217,22 +202,6 @@ export default {
         this.groupedApprovalHistory = []
       }
     },
-    // 获取审批角色名称
-    getApproverRoleName(role) {
-      return getApproverRoleName(role)
-    },
-    // 获取审批状态名称
-    getApprovalStatusName(status) {
-      return getApprovalStatusName(status)
-    },
-
-    // 格式化时间戳
-    formatTimestamp(timestamp) {
-      if (!timestamp) return '未知时间'
-      const date = new Date(timestamp)
-      return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`
-    },
-
     // 获取申请类型名称
     getApplicationTypeName(type) {
       return getApplicationTypeName(type)
@@ -250,10 +219,6 @@ export default {
       return getApplicationStatusName(statusValue)
     },
 
-    // 获取设备类型名称
-    getModelTypeName(type) {
-      return getModelTypeName(type)
-    },
 
     // 获取设备种类名称
     getTypeName(type) {
@@ -278,7 +243,7 @@ export default {
       // 确保每次刷新也遵循当前开关状态
       this.query.approverUserName = this.currentUser
       return true
-    },
+    }
     // 根据审核状态返回 el-tag 类型
 
   }

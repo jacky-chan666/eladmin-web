@@ -20,16 +20,11 @@
         :form-data="currentFormData"
         :mode="formMode"
         :show-approval-section="true"
-        :dev-contact-users="devContactUsers"
-        :test-contact-users="testContactUsers"
-        :dev-leader-users="devLeaderUsers"
-        :test-leader-users="testLeaderUsers"
         :data-fields="dataFields"
-        :application-data-type="1"
+        :application-data-type="applicationDataType"
         @close="handleFormClose"
         @save-success="handleSaveSuccess"
         @submit-success="handleSubmitSuccess"
-        @update-approver-users="handleUpdateApproverUsers"
       />
 
       <!-- 表格渲染 -->
@@ -66,8 +61,9 @@ import crudOperation from '@crud/CRUD.operation'
 import onOperation from '@crud/ON.operation'
 import pagination from '@crud/Pagination'
 import ApplicationFormDialog from '@/views/application/summary/ApplicationFormDialog.vue'
-import { getDataFieldsByType, APPLICATION_DATA_TYPE, APPLICATION_TYPE } from '@/utils/dataFields'
+import { getDataFieldsByType, APPLICATION_DATA_TYPE, APPLICATION_TYPE, APPROVER_CONFIG } from '@/utils/dataFields'
 
+// ... existing code ...
 // 更新默认表单值
 const defaultForm = {
   id: null,
@@ -75,22 +71,25 @@ const defaultForm = {
   applicationTitle: null,
   applicationReason: null,
   applicationType: null, // 1:新增, 2:编辑, 3:上线, 4:下线
-  applicationDataType: APPLICATION_DATA_TYPE.DEVICE, // 1：device 2：gateway
+  applicationDataType: null, // 1：device 2：gateway
   applicantUserName: '',
   applicationDataId: null,
-  devContact: null,
-  testContact: null,
-  devLeader: null,
-  testLeader: null,
   dataDetails: {}
 }
+
+// 根据APPROVER_CONFIG动态添加审批人字段
+APPROVER_CONFIG.forEach(approver => {
+  defaultForm[approver.prop] = null
+})
+
 // 根据字段配置动态生成默认dataDetails对象
-const dataFieldsConfig = getDataFieldsByType(defaultForm.applicationDataType)
+const dataFieldsConfig = getDataFieldsByType(APPLICATION_DATA_TYPE.DEVICE)
 dataFieldsConfig.forEach(field => {
   if (field.prop) {
     defaultForm.dataDetails[field.prop] = null
   }
 })
+
 
 export default {
   name: 'DeviceInfo',
@@ -109,8 +108,8 @@ export default {
   data() {
     return {
       formDialogVisible: false,
-      formMode: 'add', // 'add' 或 'edit'
-      currentFormData: {}, // 当前表单数据
+      formMode: null, // 'add' 或 'edit'
+      currentFormData: { ...defaultForm }, // 当前表单数据
       permission: {
         add: ['admin', 'deviceInfo:add'],
         edit: ['admin', 'deviceInfo:edit'],
@@ -118,12 +117,8 @@ export default {
         online: ['admin', 'deviceInfo:online'],
         offline: ['admin', 'deviceInfo:offline']
       },
-      // 存储各角色的用户列表
-      devContactUsers: [],
-      testContactUsers: [],
-      devLeaderUsers: [],
-      testLeaderUsers: [],
 
+      applicationDataType: APPLICATION_DATA_TYPE.DEVICE,
       // 设备信息字段配置
       dataFields: dataFieldsConfig,
 
@@ -149,52 +144,66 @@ export default {
       this.currentFormData = {}
     },
 
-    handleUpdateApproverUsers(users) {
-      this.devContactUsers = users.devContactUsers
-      this.testContactUsers = users.testContactUsers
-      this.devLeaderUsers = users.devLeaderUsers
-      this.testLeaderUsers = users.testLeaderUsers
-    },
 
     // 在打开表单前填充申请人信息
-    [CRUD.HOOK.beforeToCU](crud, data) {
+    [CRUD.HOOK.beforeToEdit](crud, data) {
       // 从 Vuex 获取申请人（例如用户名）
-      const applicantUserName = this.$store.getters.user.username || '系统用户'
-      this.form.applicantUserName = applicantUserName
 
       // 设置表单模式
-      this.formMode = crud.status.add === 1 ? 'add' : 'edit'
+      this.formMode = APPLICATION_TYPE.EDIT
 
-      // 如果是编辑模式，设置当前表单数据
-      if (this.formMode === 'edit' && data) {
-        // 将扁平的设备数据结构转换为嵌套结构
-        const dataDetails = {}
+      // 将扁平的设备数据结构转换为嵌套结构
+      const dataDetails = {}
 
-        // 根据字段配置动态构建dataDetails对象
-        dataFieldsConfig.forEach(field => {
-          if (field.prop) {
-            dataDetails[field.prop] = data[field.prop] || null
-          }
-        })
-
-        // 设置当前表单数据
-        this.currentFormData = {
-          ...data,
-          applicationDataId: data.id,
-          applicationType: crud.status.add === 1 ? APPLICATION_TYPE.ADD : APPLICATION_TYPE.EDIT, // 新增为1，编辑为2
-          id: null,
-          dataDetails
+      // 根据字段配置动态构建dataDetails对象
+      dataFieldsConfig.forEach(field => {
+        if (field.prop) {
+          dataDetails[field.prop] = data[field.prop] || null
         }
-      } else {
-        // 新增模式，清空当前表单数据
-        this.currentFormData = {}
+      })
+
+      // 设置当前表单数据
+      this.currentFormData = {
+        ...defaultForm,
+        applicantUserName: this.$store.getters.user.username || 'UNKOWN USERNAME',
+        applicationDataId: data.id,
+        applicationType: APPLICATION_TYPE.EDIT, // 新增为1，编辑为2
+        applicationDataType: APPLICATION_DATA_TYPE.DEVICE,
+        id: null,
+        dataDetails
       }
+      console.log(this.currentFormData)
 
       // 显示表单对话框
       this.formDialogVisible = true
 
       return false // 阻止默认的表单弹出
     },
+
+    // 在打开表单前填充申请人信息
+    [CRUD.HOOK.beforeToAdd](crud, data) {
+      // 从 Vuex 获取申请人（例如用户名）
+
+      // 设置表单模式
+      this.formMode = APPLICATION_TYPE.ADD
+
+      // 设置当前表单数据
+      this.currentFormData = {
+        ...defaultForm,
+        applicantUserName: this.$store.getters.user.username || 'UNKOWN USERNAME',
+        applicationDataId: null,
+        applicationType: APPLICATION_TYPE.ADD, // 新增为1，编辑为2
+        applicationDataType: APPLICATION_DATA_TYPE.DEVICE,
+        id: null
+      }
+      console.log(this.currentFormData)
+
+      // 显示表单对话框
+      this.formDialogVisible = true
+
+      return false // 阻止默认的表单弹出
+    },
+
     getRowFormData(row) {
       const dataDetails = {}
 
@@ -206,6 +215,7 @@ export default {
       })
 
       const currentFormData = {
+        ...defaultForm,
         applicationDataId: row.id,
         applicantUserName: this.$store.getters.user.username,
         applicationDataType: APPLICATION_DATA_TYPE.DEVICE,
@@ -224,4 +234,5 @@ export default {
 <style scoped>
 /* 可以根据需要添加样式 */
 </style>
+
 

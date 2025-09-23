@@ -27,7 +27,6 @@
       </el-button>
     </div>
 
-
     <!-- 统一的操作表单弹窗 -->
     <el-dialog
       :visible.sync="formVisible"
@@ -141,7 +140,7 @@
         </el-card>
 
 
-            <!-- 审核信息区块 -->
+        <!-- 审核信息区块 -->
         <el-card v-if="showApprovalSection" shadow="never" style="margin-bottom: 20px;">
           <div slot="header" style="font-weight: bold; font-size: 16px;">审核信息</div>
           <el-row :gutter="20">
@@ -186,29 +185,14 @@
 
 // ... existing code ...
 <script>
-import CRUD, { crud } from '@crud/crud'
+import { crud } from '@crud/crud'
 import { getAll } from '@/api/system/role'
 import { getUsersByRoleId } from '@/api/system/user'
-import { submitApplication, saveDraft } from '@/api/applicationForm'
+import { submitApplication } from '@/api/applicationForm'
 import { APPLICATION_TYPE, APPROVER_CONFIG } from '@/utils/dataFields'
 
 
-// 更新默认表单值
-const defaultForm = {
-  id: null,
-  uuid: null,
-  applicationTitle: null,
-  applicationReason: null,
-  applicationType: null, // 1:新增, 2:编辑, 3:上线, 4:下线
-  applicationDataType: null, // 区分不同的数据类型
-  applicationDataId: null, // 数据表的主键ID
-  applicantUserName: '',
-  devContact: null,
-  testContact: null,
-  devLeader: null,
-  testLeader: null,
-  dataDetails: {}
-}
+
 
 export default {
   mixins: [crud()],
@@ -224,22 +208,6 @@ export default {
     showApprovalSection: {
       type: Boolean,
       default: true
-    },
-    devContactUsers: {
-      type: Array,
-      default: () => []
-    },
-    testContactUsers: {
-      type: Array,
-      default: () => []
-    },
-    devLeaderUsers: {
-      type: Array,
-      default: () => []
-    },
-    testLeaderUsers: {
-      type: Array,
-      default: () => []
     },
     // 新增：设备信息字段配置
     dataFields: {
@@ -261,18 +229,38 @@ export default {
     disabledOffline: { type: Boolean, default: false }
   },
   data() {
+    const dynamicUserProps = {}
+    APPROVER_CONFIG.forEach(config => {
+      if (config.usersProp) {
+        dynamicUserProps[config.usersProp] = [] // 如：devContactUsers: []
+      }
+    })
+    // 初始化基础规则
+    const baseRules = {
+      applicationTitle: [{ required: true, message: '申请单标题不能为空', trigger: 'blur' }],
+      applicationReason: [{ required: true, message: '申请理由不能为空', trigger: 'blur' }],
+      reason: [{ required: true, message: '请输入理由', trigger: 'blur' }]
+    }
+
+    // 初始化规则对象
+    const rules = { ...baseRules }
+
+    // 根据配置动态生成审核相关的校验规则
+    APPROVER_CONFIG.forEach(approver => {
+      rules[approver.key] = [
+        { required: true, message: `请选择${approver.label}`, trigger: 'change' }
+      ]
+    })
+
     return {
       formVisible: false,
       operationType: '', // 'online' 或 'offline'
-      form: { ...defaultForm },
+      form: { },
       submitLoading: false,
-      baseRules: {
-        applicationTitle: [{ required: true, message: '申请单标题不能为空', trigger: 'blur' }],
-        applicationReason: [{ required: true, message: '申请理由不能为空', trigger: 'blur' }],
-        reason: [{ required: true, message: '请输入理由', trigger: 'blur' }]
-      },
+      rules,
       // 审批人配置
-      approverConfig: APPROVER_CONFIG
+      approverConfig: APPROVER_CONFIG,
+      ...dynamicUserProps
     }
   },
   computed: {
@@ -289,21 +277,6 @@ export default {
       return this.operationType === 'online'
         ? '请说明本次上线的原因和变更内容'
         : '请说明本次下线的原因'
-    },
-    rules() {
-      const rules = { ...this.baseRules }
-
-      // 如果显示审核信息区域，则添加审核相关的校验规则
-      if (this.showApprovalSection) {
-        // 根据配置动态生成校验规则
-        this.approverConfig.forEach(approver => {
-          rules[approver.key] = [
-            { required: true, message: `请选择${approver.label}`, trigger: 'change' }
-          ]
-        })
-      }
-
-      return rules
     }
   },
   watch: {
@@ -312,7 +285,7 @@ export default {
         if (newVal && Object.keys(newVal).length > 0) {
           // 使用深拷贝确保不会影响原始数据
           const newData = JSON.parse(JSON.stringify(newVal))
-          this.form = { ...defaultForm, ...newData }
+          this.form = { ...newData }
         } else if (!newVal || Object.keys(newVal).length === 0) {
           // 如果没有传入数据，则重置为默认表单
           this.resetForm()
@@ -320,34 +293,15 @@ export default {
       },
       immediate: true,
       deep: true
-    },
-    formVisible: {
-      handler(newVal) {
-        if (newVal) {
-          // 当表单显示时，检查是否需要加载审批人列表
-          this.checkAndLoadApproverUsers();
-        }
-      }
     }
   },
   methods: {
     resetForm() {
-      this.form = JSON.parse(JSON.stringify(defaultForm))
+      // this.form = JSON.parse(JSON.stringify(defaultForm))
       if (this.$refs.form) {
         this.$nextTick(() => {
           this.$refs.form.resetFields()
         })
-      }
-    },
-
-    // 检查并加载审批人列表
-    checkAndLoadApproverUsers() {
-      // 检查是否有任何审批人列表为空，如果为空则加载
-      if (this.devContactUsers.length === 0 &&
-          this.testContactUsers.length === 0 &&
-          this.devLeaderUsers.length === 0 &&
-          this.testLeaderUsers.length === 0) {
-        this.loadApproverUsersByRoles();
       }
     },
 
@@ -356,12 +310,13 @@ export default {
       // 使用配置中的usersProp字段来获取对应的用户列表属性名
       const approver = this.approverConfig.find(item => item.key === key);
       if (approver && approver.usersProp) {
-        return this[approver.usersProp] || [];
+        return this[approver.usersProp] || []
       }
-      return [];
+      return []
     },
 
     showForm(type) {
+      this.loadApproverUsersByRoles()
       this.operationType = type
       this.formVisible = true
 
@@ -395,8 +350,8 @@ export default {
 
         // 更新本地数据
         Object.keys(userLists).forEach(key => {
-          this[key] = userLists[key];
-        });
+          this[key] = userLists[key]
+        })
 
         // 触发事件，通知父组件更新审批人列表
         this.$emit('update-approver-users', userLists)
@@ -543,5 +498,6 @@ export default {
   color: #c0c4cc !important;
 }
 </style>
+
 
 

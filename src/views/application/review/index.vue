@@ -18,13 +18,6 @@
 
       <crudOperation :permission="permission" />
 
-      <!-- 显示全部开关 -->
-      <el-switch
-        v-model="showAll"
-        active-text="显示全部"
-        style="margin-right: 15px;"
-        @change="onSwitchChange"
-      />
 
       <!-- 表格渲染 -->
       <el-table ref="table" v-loading="crud.loading" :data="crud.data" size="small" style="width: 100%;" @selection-change="crud.selectionChangeHandler">
@@ -122,11 +115,7 @@ import {
   getApplicationTypeName,
   getApplicationDataTypeName,
   getApplicationStatusName,
-  getApprovalStatusName,
-  getApproverRoleName,
-  getModelTypeName,
   getDeviceTypeName,
-  APPLICATION_STATUS,
   APPROVAL_STATUS
 } from '@/utils/dataFields'
 
@@ -135,7 +124,7 @@ const defaultForm = {
 
 export default {
   name: 'ApplicationForm',
-  components: { pagination, crudOperation, rrOperation, ApplicationDetailView},
+  components: { pagination, crudOperation, rrOperation, ApplicationDetailView },
   mixins: [presenter(), header(), form(defaultForm), crud()],
   cruds() {
     return CRUD({
@@ -151,12 +140,12 @@ export default {
     return {
       // 新增：详情相关状态
       detail: {},
-      deviceInfo: {},
+      dataDetails: {},
       detailVisible: false,
       rejectDialogVisible: false,
       rejectReason: '',
       submitLoading: false,
-      loadingDeviceInfo: false,
+      loadingDataDetails: false,
       parsedData: {}, // 存储解析后的设备信息
       approvalHistory: [], // 存储解析后的审批历史记录
       groupedApprovalHistory: [], // 按轮次分组的审批历史记录
@@ -190,7 +179,7 @@ export default {
     handleView(row) {
       this.detail = { ...row } // 复制当前行数据
       this.parsedData = {}
-      this.loadingDeviceInfo = true
+      this.loadingDataDetails = true
       this.detailVisible = true
 
       // 解析设备信息
@@ -209,7 +198,7 @@ export default {
       // 解析审批历史记录
       this.parseApprovalHistory(row.approvalHistory)
 
-      this.loadingDeviceInfo = false
+      this.loadingDataDetails = false
     },
 
     // 解析审批历史记录
@@ -251,14 +240,6 @@ export default {
         this.groupedApprovalHistory = []
       }
     },
-    // 获取审批角色名称
-    getApproverRoleName(role) {
-      return getApproverRoleName(role)
-    },
-    // 获取审批状态名称
-    getApprovalStatusName(status) {
-      return getApprovalStatusName(status)
-    },
 
     // 格式化时间戳
     formatTimestamp(timestamp) {
@@ -284,29 +265,11 @@ export default {
       return getApplicationStatusName(statusValue)
     },
 
-    // 获取设备类型名称
-    getModelTypeName(type) {
-      return getModelTypeName(type)
-    },
-
     // 获取设备种类名称
     getTypeName(type) {
       return getDeviceTypeName(type)
     },
 
-    // 根据审核状态返回 el-tag 类型
-    approvalTag(status) {
-      if (!status) return 'info'
-      switch (parseInt(status)) {
-        case APPROVAL_STATUS.APPROVED:
-          return 'success'
-        case APPROVAL_STATUS.REJECTED:
-          return 'danger'
-        case APPROVAL_STATUS.PENDING:
-        default:
-          return 'info'
-      }
-    },
     openRejectDialog(row) {
       this.detail = { ...row }
       this.rejectDialogVisible = true

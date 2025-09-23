@@ -45,16 +45,16 @@
           <template slot-scope="scope">
             <div style="display: flex; justify-content: center; flex-wrap: wrap; gap: 8px;">
               <!-- 查看：所有人都可以看（或者你也可以限制权限）除了草稿 -->
-              <el-button v-if="scope.row.status !== STATUS_DRAFT" size="mini" type="text" @click="handleView(scope.row)">查看</el-button>
+              <el-button v-if="scope.row.status !== APPLICATION_STATUS.DRAFT" size="mini" type="text" @click="handleView(scope.row)">查看</el-button>
 
               <!-- 只有本人的申请单才显示其他操作按钮 -->
               <template v-if="isSelf(scope.row)">
                 <!-- 填写：草稿状态 -->
-                <el-button v-if="scope.row.status === STATUS_DRAFT" size="mini" type="text" @click="handleFill(scope.row)">填写</el-button>
+                <el-button v-if="scope.row.status === APPLICATION_STATUS.DRAFT" size="mini" type="text" @click="handleFill(scope.row)">填写</el-button>
 
                 <!-- 删除：草稿状态 -->
                 <el-button
-                  v-if="scope.row.status === STATUS_DRAFT"
+                  v-if="scope.row.status === APPLICATION_STATUS.DRAFT"
                   size="mini"
                   type="text"
                   style="color: #E53935;"
@@ -64,11 +64,11 @@
                 </el-button>
 
                 <!-- 撤回：已提交状态 -->
-                <el-button v-if="scope.row.status === STATUS_SUBMITTED || scope.row.status === STATUS_FIRMWARE_FAILED || scope.row.status === STATUS_FIRMWARE_FAILED || scope.row.status === STATUS_SYNC_FAILED" size="mini" type="text" style="color: #FFA000;" @click="handleWithdraw(scope.row)">撤回</el-button>
+                <el-button v-if="scope.row.status === APPLICATION_STATUS.SUBMITTED || scope.row.status === APPLICATION_STATUS.FIRMWARE_FAILED || scope.row.status === APPLICATION_STATUS.FIRMWARE_FAILED || scope.row.status === APPLICATION_STATUS.SYNC_FAILED" size="mini" type="text" style="color: #FFA000;" @click="handleWithdraw(scope.row)">撤回</el-button>
 
                 <!-- 重新填写：已驳回状态 -->
                 <el-button
-                  v-if="scope.row.status === STATUS_REJECTED || scope.row.status === STATUS_WITHDRAWN"
+                  v-if="scope.row.status === APPLICATION_STATUS.REJECTED || scope.row.status === APPLICATION_STATUS.WITHDRAWN"
                   size="mini"
                   type="text"
                   @click="handleFill(scope.row)"
@@ -77,11 +77,11 @@
                 </el-button>
 
                 <!-- 固件校验：固件校验中状态 -->
-                <el-button v-if="scope.row.status === STATUS_FIRMWARE_VERIFY" size="mini" type="text" style="color: #4CAF50;" @click="handleFirmwareCheck(scope.row)">固件校验</el-button>
+                <el-button v-if="scope.row.status === APPLICATION_STATUS.FIRMWARE_VERIFY" size="mini" type="text" style="color: #4CAF50;" @click="handleFirmwareCheck(scope.row)">固件校验</el-button>
 
                 <!-- 发布同步：同步中或同步失败状态 -->
                 <el-button
-                  v-if="scope.row.status === STATUS_SYNCING || scope.row.status === STATUS_SYNC_FAILED"
+                  v-if="scope.row.status === APPLICATION_STATUS.SYNCING || scope.row.status === APPLICATION_STATUS.SYNC_FAILED"
                   size="mini"
                   type="text"
                   style="color: #2196F3;"
@@ -109,7 +109,6 @@
       <ApplicationFormDialog
         :visible.sync="formDialogVisible"
         :form-data="currentFormData"
-        :mode="formMode"
         :application-data-type="currentApplicationDataType"
         :data-fields="currentDataFields"
         @close="handleFormClose"
@@ -123,6 +122,7 @@
   </div>
 </template>
 
+
 <script>
 import crudApplicationForm from '@/api/applicationForm.js'
 import CRUD, { presenter, header, form, crud } from '@crud/crud'
@@ -132,7 +132,14 @@ import pagination from '@crud/Pagination'
 import ApplicationFormDialog from './ApplicationFormDialog.vue'
 import ApplicationDetailView from './ApplicationDetailView.vue'
 import { withdrawApplication, deleteApplicationForm } from '@/api/applicationForm'
-import { getDataFieldsByType } from '@/utils/dataFields'
+import {
+  getDataFieldsByType,
+  APPLICATION_STATUS,
+  getApplicationTypeName,
+  getApplicationDataTypeName,
+  getApplicationStatusName,
+  getApprovalStatusName
+} from '@/utils/dataFields'
 
 const defaultForm = {
 
@@ -161,29 +168,8 @@ export default {
       // 表单弹窗相关
       formDialogVisible: false,
       currentFormData: {},
-      formMode: 'add', // 'add' 或 'edit'
       currentApplicationDataType: 1, // 当前申请单的设备数据类型
       currentDataFields: [], // 当前设备字段配置
-
-      // 申请单状态常量定义
-      STATUS_DRAFT: -1, // 草稿
-      STATUS_SUBMITTED: 0, // 已提交
-      STATUS_PENDING: 1, // 待审批
-      STATUS_APPROVED: 2, // 审批通过
-      STATUS_FIRMWARE_VERIFY: 3, // 固件校验中
-      STATUS_FIRMWARE_FAILED: 4, // 固件校验失败
-      STATUS_SYNCING: 5, // 同步中
-      STATUS_SYNC_FAILED: 6, // 同步失败
-      STATUS_COMPLETED: 7, // 已完成
-      STATUS_REJECTED: 8, // 已驳回
-      STATUS_AUTO_PROCESSING: 9, // 自动处理中
-      STATUS_AUTO_FAILED: 10, // 自动处理失败
-      STATUS_MANUAL_TRIGGERED: 11, // 手动触发
-      STATUS_WITHDRAWN: 12, // 已撤回
-
-      APPROVAL_STATUS_PENDING: 0,
-      APPROVAL_STATUS_APPROVED: 1,
-      APPROVAL_STATUS_REJECTED: 2,
 
       permission: {
         add: ['admin', 'applicationForm.js:add'],
@@ -199,65 +185,31 @@ export default {
         applicationTitle: [{ required: true, message: '申请单标题不能为空', trigger: 'blur' }],
         applicationReason: [{ required: true, message: '申请理由不能为空', trigger: 'blur' }]
       },
-      showAll: false // 控制是否显示全部申请单
+      showAll: false, // 控制是否显示全部申请单
+      // 导入常量以便在模板中使用
+      APPLICATION_STATUS: APPLICATION_STATUS
     }
   },
   methods: {
     // 获取申请单类型名称
     getApplicationTypeName(type) {
-      const typeMap = {
-        1: '新增',
-        2: '编辑',
-        3: '上线',
-        4: '下线'
-      }
-      return typeMap[type] || '未知'
+      return getApplicationTypeName(type)
     },
 
     // 获取申请单数据类型名称
     getApplicationDataTypeName(type) {
-      const typeMap = {
-        1: '第一种设备类型',
-        2: '第二种设备类型'
-      }
-      return typeMap[type] || '未知'
+      return getApplicationDataTypeName(type)
     },
 
     // 获取申请状态名称
     getStatusName(status) {
-      // 确保状态值为数字类型
-      const statusValue = parseInt(status, 10)
-
-      const statusMap = {
-        [this.STATUS_DRAFT]: '草稿',
-        [this.STATUS_SUBMITTED]: '已提交',
-        [this.STATUS_PENDING]: '待审批',
-        [this.STATUS_APPROVED]: '审批通过',
-        [this.STATUS_FIRMWARE_VERIFY]: '固件校验中',
-        [this.STATUS_FIRMWARE_FAILED]: '固件校验失败',
-        [this.STATUS_SYNCING]: '同步中',
-        [this.STATUS_SYNC_FAILED]: '同步失败',
-        [this.STATUS_COMPLETED]: '已完成',
-        [this.STATUS_REJECTED]: '已驳回',
-        [this.STATUS_AUTO_PROCESSING]: '自动处理中',
-        [this.STATUS_AUTO_FAILED]: '自动处理失败',
-        [this.STATUS_MANUAL_TRIGGERED]: '手动触发',
-        [this.STATUS_WITHDRAWN]: '已撤回'
-      }
-
-      return statusMap[statusValue] || '未知状态'
+      return getApplicationStatusName(status)
     },
 
     // 获取审批状态名称
     getApprovalStatusName(status) {
-      const statusMap = {
-        [this.APPROVAL_STATUS_PENDING]: '待审批',
-        [this.APPROVAL_STATUS_APPROVED]: '通过',
-        [this.APPROVAL_STATUS_REJECTED]: '驳回'
-      }
-      return statusMap[status] || '未知'
+      return getApprovalStatusName(status)
     },
-
     // 判断是否为本人的申请单
     isSelf(row) {
       // 从 Vuex store 获取当前用户信息
@@ -278,9 +230,6 @@ export default {
 
       // 根据设备数据类型获取字段配置
       this.currentDataFields = getDataFieldsByType(this.currentApplicationDataType)
-
-      // 设置表单模式为编辑
-      this.formMode = 'edit'
 
       // 构造表单数据
       let dataDetails = {}

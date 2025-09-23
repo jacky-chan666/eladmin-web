@@ -8,7 +8,7 @@
     top="3vh"
     style="min-width: 900px;"
   >
-    <el-form ref="form" :model="form" :rules="computedRules" size="small" label-width="100px">
+    <el-form ref="form" :model="form" :rules="rules" size="small" label-width="100px">
 
       <!-- 在设备信息卡片之前添加申请信息卡片 -->
       <el-card shadow="never" style="margin-bottom: 20px;">
@@ -151,24 +151,9 @@
 import { getAll } from '@/api/system/role'
 import { getUsersByRoleId } from '@/api/system/user'
 import { submitApplication, saveDraft } from '@/api/applicationForm'
-import { getDataRulesByType, APPROVER_CONFIG } from '@/utils/dataFields'
+import { getDataRulesByType, APPROVER_CONFIG, APPLICATION_TYPE} from '@/utils/dataFields'
 
-// 更新默认表单值
-const defaultForm = {
-  id: null,
-  uuid: null,
-  applicationTitle: null,
-  applicationReason: null,
-  applicationType: null, // 1:新增, 2:编辑, 3:上线, 4:下线
-  applicationDataType: null, // 区分不同的数据类型
-  applicationDataId: null, // 数据表的主键ID
-  applicantUserName: '',
-  devContact: null,
-  testContact: null,
-  devLeader: null,
-  testLeader: null,
-  dataDetails: {}
-}
+
 
 export default {
   name: 'ApplicationFormDialog',
@@ -181,29 +166,13 @@ export default {
       type: Object,
       default: () => ({})
     },
-    mode: {
-      type: String,
-      default: 'add' // 'add' 或 'edit'
+    applicationType: {
+      type: Number,
+      default: APPLICATION_TYPE.ADD // 'add' 或 'edit'
     },
     showApprovalSection: {
       type: Boolean,
       default: true
-    },
-    devContactUsers: {
-      type: Array,
-      default: () => []
-    },
-    testContactUsers: {
-      type: Array,
-      default: () => []
-    },
-    devLeaderUsers: {
-      type: Array,
-      default: () => []
-    },
-    testLeaderUsers: {
-      type: Array,
-      default: () => []
     },
     // 新增：设备信息字段配置
     dataFields: {
@@ -217,21 +186,31 @@ export default {
     }
   },
   data() {
+    // 初始化基础规则
+    const baseRules = {
+      applicationTitle: [{ required: true, message: '申请单标题不能为空', trigger: 'blur' }],
+      applicationReason: [{ required: true, message: '申请理由不能为空', trigger: 'blur' }],
+      reason: [{ required: true, message: '请输入理由', trigger: 'blur' }]
+    }
+    const dataRules = getDataRulesByType(this.applicationDataType)
+
+    // 初始化规则对象
+    const rules = { ...baseRules, ...dataRules }
+
+    // 根据配置动态生成审核相关的校验规则
+    APPROVER_CONFIG.forEach(approver => {
+      rules[approver.key] = [
+        { required: true, message: `请选择${approver.label}`, trigger: 'change' }
+      ]
+    })
+
     return {
       saveLoading: false,
       submitLoading: false,
-      form: { ...defaultForm },
+      form: { },
       // 审批人配置
       approverConfig: APPROVER_CONFIG,
-
-      baseRules: {
-        applicationTitle: [
-          { required: true, message: '申请单标题不能为空', trigger: 'blur' }
-        ],
-        applicationReason: [
-          { required: true, message: '申请理由不能为空', trigger: 'blur' }
-        ]
-      }
+      rules
     }
   },
   computed: {
@@ -244,26 +223,7 @@ export default {
       }
     },
     title() {
-      return this.mode === 'edit' ? '编辑申请单' : '新增申请单'
-    },
-    computedRules() {
-      const rules = { ...this.baseRules }
-
-      // 如果显示审核信息区域，则添加审核相关的校验规则
-      if (this.showApprovalSection) {
-        // 根据配置动态生成校验规则
-        this.approverConfig.forEach(approver => {
-          rules[approver.key] = [
-            { required: true, message: `请选择${approver.label}`, trigger: 'change' }
-          ]
-        })
-      }
-
-      // 根据设备数据类型获取设备字段的校验规则
-      const dataRules = getDataRulesByType(this.applicationDataType)
-      Object.assign(rules, dataRules)
-
-      return rules
+      return this.applicationType === APPLICATION_TYPE.EDIT ? '编辑申请单' : '新增申请单'
     }
   },
   watch: {
@@ -272,14 +232,8 @@ export default {
         if (newVal && Object.keys(newVal).length > 0) {
           // 使用深拷贝确保不会影响原始数据
           const newData = JSON.parse(JSON.stringify(newVal))
-          // 确保 dataDetails 对象存在
-          if (!newData.dataDetails) {
-            newData.dataDetails = { ...defaultForm.dataDetails }
-          } else {
-            // 合并默认值和传入值，确保所有字段都存在
-            newData.dataDetails = { ...defaultForm.dataDetails, ...newData.dataDetails }
-          }
-          this.form = { ...defaultForm, ...newData }
+          this.form = { ...newData }
+          this.loadApproverUsersByRoles()
         } else if (!newVal || Object.keys(newVal).length === 0) {
           // 如果没有传入数据，则重置为默认表单
           this.resetForm()
@@ -288,27 +242,6 @@ export default {
       immediate: true,
       deep: true
     },
-    visible(newVal) {
-      if (newVal) {
-        // 如果没有传入审批人列表，则加载审批人列表
-        if (this.devContactUsers.length === 0 &&
-          this.testContactUsers.length === 0 &&
-          this.devLeaderUsers.length === 0 &&
-          this.testLeaderUsers.length === 0) {
-          this.loadApproverUsersByRoles()
-        }
-      }
-    },
-    // 监听表单变化，防止设备详情被重置
-    'form.dataDetails': {
-      handler(newVal) {
-        // 确保 dataDetails 始终是一个对象
-        if (!newVal) {
-          this.$set(this.form, 'dataDetails', { ...defaultForm.dataDetails })
-        }
-      },
-      deep: true
-    }
   },
   methods: {
     // 根据审批人key获取对应的用户列表
@@ -316,9 +249,9 @@ export default {
       // 使用配置中的usersProp字段来获取对应的用户列表属性名
       const approver = this.approverConfig.find(item => item.key === key);
       if (approver && approver.usersProp) {
-        return this[approver.usersProp] || [];
+        return this[approver.usersProp] || []
       }
-      return [];
+      return []
     },
 
     handleClose() {
@@ -327,7 +260,6 @@ export default {
     },
 
     resetForm() {
-      this.form = JSON.parse(JSON.stringify(defaultForm))
       if (this.$refs.form) {
         this.$nextTick(() => {
           this.$refs.form.resetFields()
@@ -343,7 +275,10 @@ export default {
         this.submitLoading = true
 
         // 构造提交数据
-        const submitData = this.buildSubmitData()
+        const submitData = {
+          ...this.form,
+          dataDetails: JSON.stringify(this.form.dataDetails)
+        }
 
         await submitApplication(submitData)
         this.$message.success('申请提交成功')
@@ -356,47 +291,6 @@ export default {
         this.submitLoading = false
       }
     },
-
-    // 构建提交数据，适配不同的使用场景
-    buildSubmitData() {
-      // 检查是否需要将嵌套结构转换为扁平结构
-      // 这通常用于 devices/one/index.vue 这样的场景
-      const isFlatStructureNeeded = this.$parent && this.$parent.$options.name === 'DeviceInfo'
-
-      if (isFlatStructureNeeded) {
-        // 转换为扁平结构
-        const flatData = {
-          ...this.form,
-          dataDetails: JSON.stringify(this.form.dataDetails),
-          applicationType: this.getApplicationType()
-        }
-
-        // 将 dataDetails 中的字段提取到顶层
-        Object.keys(this.form.dataDetails).forEach(key => {
-          flatData[key] = this.form.dataDetails[key]
-        })
-
-        return flatData
-      } else {
-        // 保持嵌套结构
-        return {
-          ...this.form,
-          dataDetails: JSON.stringify(this.form.dataDetails),
-          applicationType: this.getApplicationType()
-        }
-      }
-    },
-
-    getApplicationType() {
-      // 根据操作状态确定申请类型
-      if (this.mode === 'add') {
-        return 1 // 新增
-      } else if (this.mode === 'edit') {
-        return 2 // 编辑
-      }
-      return 1 // 默认新增
-    },
-
     // 新增保存草稿方法
     async handleSaveDraft() {
       this.saveLoading = true
@@ -405,7 +299,10 @@ export default {
         await this.$refs.form.validate()
 
         // 构造提交数据
-        const submitData = this.buildSubmitData()
+        const submitData = {
+          ...this.form,
+          dataDetails: JSON.stringify(this.form.dataDetails)
+        }
 
         // 调用保存草稿接口
         await saveDraft(submitData)
